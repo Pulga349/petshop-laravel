@@ -1,0 +1,66 @@
+@extends('layouts.app')
+
+@section('header')
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-semibold text-gray-200">Detalle de Venta #{{ $sale->id }}</h2>
+        <a href="{{ route('sales.index') }}" class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition">
+            Volver
+        </a>
+    </div>
+@endsection
+
+@section('content')
+    <div class="space-y-6">
+        <!-- Sale Info -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-6">
+            <div class="grid grid-cols-3 gap-6">
+                <div>
+                    <p class="text-sm text-gray-400">Fecha</p>
+                    <p class="text-lg text-gray-200">{{ \Carbon\Carbon::parse($sale->date)->format('d/m/Y') }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-400">Cliente</p>
+                    <p class="text-lg text-gray-200">{{ $sale->client->name ?? '-' }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-400">Total</p>
+                    <p class="text-lg text-emerald-400 font-semibold">${{ number_format($sale->total, 2) }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Table -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Producto</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cantidad</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Precio Unit.</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Costo Compra</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ganancia</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700">
+                    @forelse($sale->details as $detail)
+                        <tr class="hover:bg-gray-750">
+                            <td class="px-6 py-4 text-sm text-gray-200">{{ $detail->product->name }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-200">{{ $detail->quantity }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-200">${{ number_format($detail->unit_price, 2) }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-400">${{ number_format($detail->purchase_cost_at_sale, 2) }}</td>
+                            <td class="px-6 py-4 text-sm text-emerald-400">
+                                ${{ number_format(($detail->unit_price - $detail->purchase_cost_at_sale) * $detail->quantity, 2) }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-200">${{ number_format($detail->subtotal, 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center text-gray-500">No hay detalles</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+@endsection

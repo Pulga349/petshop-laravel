@@ -1,0 +1,92 @@
+// PetShop Laravel — Database Schema
+// Compatible con dbdiagram.io / DbML
+
+Table users {
+  id bigint [pk, increment]
+  name varchar(255) [not null]
+  email varchar(255) [not null, unique]
+  email_verified_at timestamp [null]
+  password varchar(255) [not null]
+  remember_token varchar(100) [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table clients {
+  id bigint [pk, increment]
+  name varchar(255) [not null]
+  email varchar(255) [null, unique]
+  phone varchar(255) [null]
+  address varchar(255) [null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table suppliers {
+  id bigint [pk, increment]
+  name varchar(255) [not null]
+  contact_person varchar(255) [null]
+  category varchar(255) [not null, default: 'Otros']
+  logo varchar(255) [null]
+  email varchar(255) [null, unique]
+  phone varchar(255) [null]
+  address varchar(255) [null]
+  status varchar(255) [not null, default: 'Active']
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table products {
+  id bigint [pk, increment]
+  name varchar(255) [not null]
+  sku varchar(255) [null, unique]
+  category varchar(255) [null]
+  description text [null]
+  image varchar(255) [null]
+  sale_price decimal(10,2) [not null]
+  purchase_price decimal(10,2) [not null]
+  initial_stock int [not null, default: 0]
+  supplier_id bigint [not null, ref: > suppliers.id]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table purchases {
+  id bigint [pk, increment]
+  date date [not null]
+  supplier_id bigint [not null, ref: > suppliers.id]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table purchase_details {
+  id bigint [pk, increment]
+  purchase_id bigint [not null, ref: > purchases.id]
+  product_id bigint [not null, ref: > products.id]
+  quantity int [not null]
+  unit_price decimal(10,2) [not null]
+  subtotal decimal(10,2) [not null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table sales {
+  id bigint [pk, increment]
+  date datetime [not null]
+  client_id bigint [not null, ref: > clients.id]
+  total decimal(10,2) [not null, default: 0]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
+
+Table sale_details {
+  id bigint [pk, increment]
+  sale_id bigint [not null, ref: > sales.id]
+  product_id bigint [not null, ref: > products.id]
+  quantity int [not null]
+  unit_price decimal(10,2) [not null]
+  purchase_cost_at_sale decimal(10,2) [not null]
+  subtotal decimal(10,2) [not null]
+  created_at timestamp [null]
+  updated_at timestamp [null]
+}
