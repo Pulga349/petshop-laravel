@@ -34,6 +34,8 @@ class ProductControllerTest extends TestCase
             'email' => 'supplier@test.com',
             'phone' => '1234567890',
             'address' => 'Test Address',
+            'category_id' => 1,
+            'category_type' => 'App\Models\Category',
         ]);
 
         // Create 5 products linked to the supplier
@@ -45,6 +47,8 @@ class ProductControllerTest extends TestCase
                 'purchase_price' => 50.00,
                 'initial_stock' => 100,
                 'supplier_id' => $this->supplier->id,
+                'category_id' => 1,
+                'category_type' => 'App\Models\Category',
             ]);
         }
     }

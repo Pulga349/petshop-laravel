@@ -42,11 +42,8 @@ class PurchaseController extends Controller
 
     public function store(StorePurchaseRequest $request): RedirectResponse
     {
-        // FormRequest handles basic validation
         $validated = $request->validated();
 
-        // VALIDACIÓN DE STOCK NO ES NECESARIA EN COMPRAS (solo suma)
-        // Pero sí validamos que los productos pertenezcan al proveedor
         foreach ($validated['items'] as $item) {
             $product = Product::findOrFail($item['product_id']);
             if ($product->supplier_id != $validated['supplier_id']) {
@@ -56,13 +53,19 @@ class PurchaseController extends Controller
             }
         }
 
-        // TRANSACCIÓN PARA CONSISTENCIA
         try {
             DB::transaction(function () use ($validated) {
+                // Calculate total from items
+                $total = 0;
+                foreach ($validated['items'] as $item) {
+                    $total += $item['quantity'] * $item['unit_price'];
+                }
+
                 // 1. Crear la compra
                 $purchase = Purchase::create([
                     'supplier_id' => $validated['supplier_id'],
                     'date' => $validated['date'],
+                    'total' => $total,
                 ]);
 
                 // 2. Crear los detalles

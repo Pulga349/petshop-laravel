@@ -32,6 +32,8 @@ class SaleControllerTest extends TestCase
             'email' => 'supplier@test.com',
             'phone' => '1234567890',
             'address' => 'Test Address',
+            'category_id' => 1,
+            'category_type' => 'App\Models\Category',
         ]);
 
         // Create a client
@@ -50,6 +52,8 @@ class SaleControllerTest extends TestCase
             'purchase_price' => 50.00,
             'initial_stock' => 100,
             'supplier_id' => $this->supplier->id,
+            'category_id' => 1,
+            'category_type' => 'App\Models\Category',
         ]);
 
         $this->product2 = Product::create([
@@ -59,6 +63,8 @@ class SaleControllerTest extends TestCase
             'purchase_price' => 100.00,
             'initial_stock' => 50,
             'supplier_id' => $this->supplier->id,
+            'category_id' => 1,
+            'category_type' => 'App\Models\Category',
         ]);
     }
 
