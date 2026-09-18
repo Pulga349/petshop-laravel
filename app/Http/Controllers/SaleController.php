@@ -34,10 +34,8 @@ class SaleController extends Controller
 
     public function store(StoreSaleRequest $request): RedirectResponse
     {
-        // FormRequest handles basic validation, now do stock check
         $validated = $request->validated();
 
-        // 🔒 VALIDACIÓN DE STOCK ANTES DE LA TRANSACCIÓN
         $stockErrors = [];
         foreach ($validated['items'] as $index => $item) {
             $product = Product::find($item['product_id']);
@@ -52,25 +50,21 @@ class SaleController extends Controller
             return back()->withErrors(['items' => $stockErrors])->withInput();
         }
 
-        // TRANSACCIÓN PARA CONSISTENCIA
         try {
             DB::transaction(function () use ($validated) {
                 $total = 0;
 
-                // 1. Crear la venta (sin total aún)
                 $sale = Sale::create([
                     'client_id' => $validated['client_id'],
                     'date' => $validated['date'],
-                    'total' => 0, // se actualiza después
+                    'total' => 0,
                 ]);
 
-                // 2. Crear los detalles Y actualizar stock
                 foreach ($validated['items'] as $item) {
                     $product = Product::findOrFail($item['product_id']);
                     $subtotal = $item['quantity'] * $item['unit_price'];
                     $total += $subtotal;
 
-                    // Guarda el costo de compra al momento de la venta
                     SaleDetail::create([
                         'sale_id' => $sale->id,
                         'product_id' => $item['product_id'],
@@ -81,13 +75,80 @@ class SaleController extends Controller
                     ]);
                 }
 
-                // 3. Actualizar el total de la venta
                 $sale->update(['total' => $total]);
+
+                $client = $sale->client;
+                $client->total_spent = Sale::where('client_id', $client->id)->sum('total');
+                $client->recalculateTier();
             });
 
             return redirect()->route('sales.index')->with('success', 'Venta registrada correctamente');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Error al registrar la venta: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    public function edit(Sale $sale): View
+    {
+        $sale->load(['client', 'details.product']);
+        $clients = Client::all();
+        $products = Product::with('supplier')->get();
+        return view('sales.edit', compact('sale', 'clients', 'products'));
+    }
+
+    public function update(UpdateSaleRequest $request, Sale $sale): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        try {
+            DB::transaction(function () use ($validated, $sale) {
+                // Delete old details
+                $sale->details()->delete();
+
+                // Calculate new total
+                $total = 0;
+                foreach ($validated['items'] as $item) {
+                    $product = Product::findOrFail($item['product_id']);
+                    $subtotal = $item['quantity'] * $item['unit_price'];
+                    $total += $subtotal;
+
+                    SaleDetail::create([
+                        'sale_id' => $sale->id,
+                        'product_id' => $item['product_id'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unit_price'],
+                        'purchase_cost_at_sale' => $product->purchase_price,
+                        'subtotal' => $subtotal,
+                    ]);
+                }
+
+                // Update sale total
+                $sale->update(['total' => $total]);
+
+                // Recalculate client tier
+                $client = $sale->client;
+                $client->total_spent = Sale::where('client_id', $client->id)->sum('total');
+                $client->recalculateTier();
+            });
+
+            return redirect()->route('sales.index')->with('success', 'Venta actualizada correctamente');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Error al actualizar la venta: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    public function destroy(Sale $sale): RedirectResponse
+    {
+        try {
+            DB::transaction(function () use ($sale) {
+                $sale->restoreStock();
+                $sale->details()->delete();
+                $sale->delete();
+            });
+
+            return redirect()->route('sales.index')->with('success', 'Venta eliminada correctamente');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Error al eliminar la venta: ' . $e->getMessage()])->withInput();
         }
     }
 }
