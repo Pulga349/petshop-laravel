@@ -27,8 +27,6 @@ return new class extends Migration
     {
         DB::statement("DROP INDEX IF EXISTS 'products_category_id_index'");
         DB::statement("DROP INDEX IF EXISTS 'suppliers_category_id_index'");
-        DB::statement("DROP INDEX IF EXISTS 'clients_tier_index'");
-        DB::statement("DROP INDEX IF EXISTS 'clients_status_index'");
         DB::statement("DROP INDEX IF EXISTS 'clients_total_spent_index'");
     }
 };

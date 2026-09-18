@@ -94,6 +94,63 @@ class MigrationTest extends TestCase
         $this->assertContains('category_id', $columnNames);
     }
 
+    public function test_category_migrations_preserve_legacy_product_and_supplier_categories(): void
+    {
+        $performanceIndexesMigration = require database_path('migrations/2026_09_15_000006_add_performance_indexes.php');
+        $supplierCategoryMigration = require database_path('migrations/2026_09_15_000004_add_category_id_to_suppliers.php');
+        $productCategoryMigration = require database_path('migrations/2026_09_15_000003_add_category_id_to_products.php');
+
+        $performanceIndexesMigration->down();
+        $supplierCategoryMigration->down();
+        $productCategoryMigration->down();
+
+        $categoryId = \DB::table('categories')->insertGetId([
+            'name' => 'Alimento',
+            'description' => 'Legacy category fixture',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $supplierId = \DB::table('suppliers')->insertGetId([
+            'name' => 'Legacy Supplier',
+            'email' => 'legacy-supplier@test.com',
+            'contact_person' => null,
+            'category' => 'Alimento',
+            'status' => 'Active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $productId = \DB::table('products')->insertGetId([
+            'name' => 'Legacy Product',
+            'sku' => 'LEGACY-001',
+            'category' => 'Nutrition',
+            'description' => null,
+            'image' => null,
+            'sale_price' => 100,
+            'purchase_price' => 50,
+            'supplier_id' => $supplierId,
+            'initial_stock' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $productCategoryMigration->up();
+        $supplierCategoryMigration->up();
+        $performanceIndexesMigration->up();
+
+        $this->assertDatabaseHas('products', [
+            'id' => $productId,
+            'category_id' => $categoryId,
+            'category_type' => 'App\\Models\\Category',
+        ]);
+        $this->assertDatabaseHas('suppliers', [
+            'id' => $supplierId,
+            'category_id' => $categoryId,
+            'category_type' => 'App\\Models\\Category',
+        ]);
+        $this->assertSame($categoryId, \App\Models\Product::findOrFail($productId)->category->id);
+        $this->assertSame($categoryId, \App\Models\Supplier::findOrFail($supplierId)->category->id);
+    }
+
     /**
      * TDD: 1.3 - category_id should have an index on products table.
      */
@@ -181,5 +238,87 @@ class MigrationTest extends TestCase
         $clientIndexes = \DB::select("PRAGMA index_list(clients)");
         $clientIndexNames = array_column($clientIndexes, 'name');
         $this->assertContains('clients_total_spent_index', $clientIndexNames);
+    }
+
+    /**
+     * Regression: migration 000006 must not remove indexes owned by migration 000005.
+     */
+    public function test_performance_indexes_rollback_preserves_client_tier_indexes(): void
+    {
+        $migration = require database_path('migrations/2026_09_15_000006_add_performance_indexes.php');
+        $migration->down();
+
+        $clientIndexes = \DB::select("PRAGMA index_list(clients)");
+        $clientIndexNames = array_column($clientIndexes, 'name');
+
+        $this->assertContains('clients_tier_index', $clientIndexNames);
+        $this->assertContains('clients_status_index', $clientIndexNames);
+        $this->assertNotContains('clients_total_spent_index', $clientIndexNames);
+    }
+
+    public function test_performance_indexes_rollback_preserves_client_tier_indexes_when_owned_index_is_missing(): void
+    {
+        \DB::statement("DROP INDEX IF EXISTS 'clients_total_spent_index'");
+
+        $migration = require database_path('migrations/2026_09_15_000006_add_performance_indexes.php');
+        $migration->down();
+
+        $clientIndexes = \DB::select("PRAGMA index_list(clients)");
+        $clientIndexNames = array_column($clientIndexes, 'name');
+
+        $this->assertContains('clients_tier_index', $clientIndexNames);
+        $this->assertContains('clients_status_index', $clientIndexNames);
+    }
+
+    /**
+     * Regression: the legacy premium-fields migration must remove its unique index before dropping sku.
+     */
+    public function test_premium_fields_rollback_removes_sku_unique_index_before_dropping_columns(): void
+    {
+        $migration = require database_path('migrations/2026_04_29_062214_add_premium_fields_to_products_table.php');
+        $migration->down();
+
+        $columns = \DB::select("PRAGMA table_info(products)");
+        $columnNames = array_column($columns, 'name');
+        $indexes = \DB::select("PRAGMA index_list(products)");
+        $indexNames = array_column($indexes, 'name');
+
+        $this->assertNotContains('sku', $columnNames);
+        $this->assertNotContains('category', $columnNames);
+        $this->assertNotContains('image', $columnNames);
+        $this->assertNotContains('products_sku_unique', $indexNames);
+    }
+
+    public function test_premium_fields_rollback_removes_sku_unique_index_with_existing_products(): void
+    {
+        $supplierId = \DB::table('suppliers')->insertGetId([
+            'name' => 'Rollback Supplier',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        \DB::table('products')->insert([
+            'name' => 'Rollback Product',
+            'sku' => 'ROLLBACK-001',
+            'category' => 'Nutrition',
+            'image' => null,
+            'description' => null,
+            'sale_price' => 10,
+            'purchase_price' => 5,
+            'supplier_id' => $supplierId,
+            'initial_stock' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $migration = require database_path('migrations/2026_04_29_062214_add_premium_fields_to_products_table.php');
+        $migration->down();
+
+        $columns = \DB::select("PRAGMA table_info(products)");
+        $columnNames = array_column($columns, 'name');
+        $indexes = \DB::select("PRAGMA index_list(products)");
+        $indexNames = array_column($indexes, 'name');
+
+        $this->assertNotContains('sku', $columnNames);
+        $this->assertNotContains('products_sku_unique', $indexNames);
     }
 }
