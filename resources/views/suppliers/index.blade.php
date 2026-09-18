@@ -46,7 +46,7 @@
 
                 @forelse($suppliers as $supplier)
                 @php
-                    $style = $categoryStyles[$supplier->category] ?? $categoryStyles['Otros'];
+                    $style = $categoryStyles[$supplier->category_name] ?? $categoryStyles['Otros'];
                 @endphp
                 <tr class="hover:bg-white/[0.02] transition-colors group">
                     <td class="px-8 py-6">
@@ -72,7 +72,7 @@
                     </td>
                     <td class="px-8 py-6">
                         <span class="px-3 py-1.5 {{ $style }} text-[10px] font-black uppercase tracking-widest rounded-lg border">
-                            {{ $supplier->category }}
+                            {{ $supplier->category_name }}
                         </span>
                     </td>
                     <td class="px-8 py-6">

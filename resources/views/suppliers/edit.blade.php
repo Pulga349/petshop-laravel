@@ -83,10 +83,10 @@
                             <div class="relative">
                                 <select name="category" required
                                         class="w-full bg-[#1a1c23]/60 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 appearance-none transition-all text-left">
-                                    <option value="Alimento" {{ $supplier->category == 'Alimento' ? 'selected' : '' }}>Alimento</option>
-                                    <option value="Accesorios" {{ $supplier->category == 'Accesorios' ? 'selected' : '' }}>Accesorios</option>
-                                    <option value="Higiene" {{ $supplier->category == 'Higiene' ? 'selected' : '' }}>Higiene</option>
-                                    <option value="Otros" {{ $supplier->category == 'Otros' ? 'selected' : '' }}>Otros</option>
+                                    <option value="Alimento" {{ $supplier->category_name == 'Alimento' ? 'selected' : '' }}>Alimento</option>
+                                    <option value="Accesorios" {{ $supplier->category_name == 'Accesorios' ? 'selected' : '' }}>Accesorios</option>
+                                    <option value="Higiene" {{ $supplier->category_name == 'Higiene' ? 'selected' : '' }}>Higiene</option>
+                                    <option value="Otros" {{ $supplier->category_name == 'Otros' ? 'selected' : '' }}>Otros</option>
                                 </select>
                             </div>
                         </div>
