@@ -11,6 +11,7 @@ use App\Models\PurchaseDetail;
 use App\Models\Sale;
 use App\Models\SaleDetail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ModelTest extends TestCase
@@ -21,7 +22,7 @@ class ModelTest extends TestCase
     {
         parent::setUp();
 
-        \DB::table('categories')->insert([
+        DB::table('categories')->insert([
             ['name' => 'Alimento'],
             ['name' => 'Accesorios'],
             ['name' => 'Higiene'],
@@ -41,9 +42,53 @@ class ModelTest extends TestCase
     public function test_category_model_exists_and_has_relationships(): void
     {
         $category = Category::create(['name' => 'Test Category', 'description' => 'Test Description']);
+        $this->supplier->update([
+            'category_id' => $category->id,
+            'category_type' => Category::class,
+        ]);
+        $product = Product::create([
+            'name' => 'Category Product',
+            'sku' => 'CAT-001',
+            'sale_price' => 100.00,
+            'purchase_price' => 50.00,
+            'initial_stock' => 10,
+            'supplier_id' => $this->supplier->id,
+            'category_id' => $category->id,
+            'category_type' => Category::class,
+        ]);
+
         $this->assertDatabaseHas('categories', ['name' => 'Test Category']);
-        $this->assertInstanceOf(Product::class, $category->products()->get()->first() ?? new Product());
-        $this->assertInstanceOf(Supplier::class, $category->suppliers()->get()->first() ?? new Supplier());
+        $this->assertSame($product->id, $category->products()->firstOrFail()->id);
+        $this->assertSame($this->supplier->id, $category->suppliers()->firstOrFail()->id);
+    }
+
+    public function test_clients_can_be_filtered_by_persisted_tier_and_status(): void
+    {
+        $goldClient = Client::create([
+            'name' => 'Gold Filter Client',
+            'email' => 'gold-filter@test.com',
+            'tier' => 'Gold',
+            'status' => 'active',
+            'total_spent' => 5000,
+        ]);
+        Client::create([
+            'name' => 'Bronze Filter Client',
+            'email' => 'bronze-filter@test.com',
+            'tier' => 'Bronze',
+            'status' => 'active',
+            'total_spent' => 500,
+        ]);
+
+        DB::enableQueryLog();
+        $goldClients = Client::query()
+            ->where('tier', 'Gold')
+            ->where('status', 'active')
+            ->get();
+
+        $this->assertCount(1, $goldClients);
+        $this->assertSame($goldClient->id, $goldClients->first()->id);
+        $this->assertSame('Gold', $goldClients->first()->tier);
+        $this->assertCount(1, DB::getQueryLog());
     }
 
     // ====== TASK 1.4: Product model ======
