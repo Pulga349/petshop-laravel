@@ -115,6 +115,39 @@ class SaleControllerTest extends TestCase
             'client_id' => $this->client->id,
             'total' => 400.00,
         ]);
+        $this->assertDatabaseHas('clients', [
+            'id' => $this->client->id,
+            'total_spent' => 400.00,
+            'tier' => 'Bronze',
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_store_persists_client_tier_after_sale_reaches_silver(): void
+    {
+        $response = $this->actingAs($this->user)->post(route('sales.store'), [
+            'client_id' => $this->client->id,
+            'date' => now()->toDateString(),
+            'items' => [
+                [
+                    'product_id' => $this->product1->id,
+                    'quantity' => 12,
+                    'unit_price' => 100.00,
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect(route('sales.index'));
+        $this->assertDatabaseHas('sales', [
+            'client_id' => $this->client->id,
+            'total' => 1200.00,
+        ]);
+        $this->assertDatabaseHas('clients', [
+            'id' => $this->client->id,
+            'total_spent' => 1200.00,
+            'tier' => 'Silver',
+            'status' => 'active',
+        ]);
     }
 
     public function test_store_validates_required_fields(): void
@@ -160,5 +193,164 @@ class SaleControllerTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('items');
+    }
+
+    // ====== TASK 2.2: Sale Edit ======
+
+    public function test_edit_returns_sale_edit_view(): void
+    {
+        $sale = Sale::create([
+            'client_id' => $this->client->id,
+            'date' => now()->toDateString(),
+            'total' => 300.00,
+        ]);
+        SaleDetail::create([
+            'sale_id' => $sale->id,
+            'product_id' => $this->product1->id,
+            'quantity' => 3,
+            'unit_price' => 100.00,
+            'purchase_cost_at_sale' => 50.00,
+            'subtotal' => 300.00,
+        ]);
+
+        $response = $this->actingAs($this->user)->get(route('sales.edit', $sale->id));
+
+        $response->assertStatus(200);
+        $response->assertSee('Editar Venta');
+        $response->assertSee($this->client->name);
+        $response->assertSee($this->product1->name);
+    }
+
+    // ====== TASK 2.2: Sale Update ======
+
+    public function test_update_modifies_sale_and_restores_stock_on_old_items(): void
+    {
+        $sale = Sale::create([
+            'client_id' => $this->client->id,
+            'date' => now()->toDateString(),
+            'total' => 300.00,
+        ]);
+        SaleDetail::create([
+            'sale_id' => $sale->id,
+            'product_id' => $this->product1->id,
+            'quantity' => 3,
+            'unit_price' => 100.00,
+            'purchase_cost_at_sale' => 50.00,
+            'subtotal' => 300.00,
+        ]);
+
+        // Stock should be reduced before update
+        $this->assertEquals(97, $this->product1->fresh()->getStock());
+
+        $response = $this->actingAs($this->user)->put(route('sales.update', $sale->id), [
+            'client_id' => $this->client->id,
+            'date' => now()->toDateString(),
+            'items' => [
+                [
+                    'product_id' => $this->product1->id,
+                    'quantity' => 5,
+                    'unit_price' => 120.00,
+                ],
+            ],
+        ]);
+
+        $response->assertRedirect(route('sales.index'));
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'client_id' => $this->client->id,
+            'total' => 600.00,
+        ]);
+        $this->assertDatabaseHas('sale_details', [
+            'sale_id' => $sale->id,
+            'product_id' => $this->product1->id,
+            'quantity' => 5,
+            'unit_price' => 120.00,
+            'subtotal' => 600.00,
+        ]);
+        $this->assertDatabaseCount('sale_details', 1);
+        $this->assertEquals(95, $this->product1->fresh()->getStock());
+        $this->assertDatabaseHas('clients', [
+            'id' => $this->client->id,
+            'total_spent' => 600.00,
+            'tier' => 'Bronze',
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_update_validation_failure_preserves_sale_details_and_stock(): void
+    {
+        $sale = Sale::create([
+            'client_id' => $this->client->id,
+            'date' => '2026-01-10',
+            'total' => 300.00,
+        ]);
+        SaleDetail::create([
+            'sale_id' => $sale->id,
+            'product_id' => $this->product1->id,
+            'quantity' => 3,
+            'unit_price' => 100.00,
+            'purchase_cost_at_sale' => 50.00,
+            'subtotal' => 300.00,
+        ]);
+        $stockBefore = $this->product1->fresh()->getStock();
+
+        $response = $this->actingAs($this->user)->put(route('sales.update', $sale->id), [
+            'client_id' => $this->client->id,
+            'date' => '2026-01-10',
+            'items' => [
+                [
+                    'product_id' => $this->product1->id,
+                    'quantity' => 0,
+                    'unit_price' => 120.00,
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasErrors('items.0.quantity');
+        $response->assertSessionHasInput('items.0.quantity', 0);
+        $this->assertDatabaseHas('sales', [
+            'id' => $sale->id,
+            'client_id' => $this->client->id,
+            'date' => '2026-01-10',
+            'total' => 300.00,
+        ]);
+        $this->assertDatabaseHas('sale_details', [
+            'sale_id' => $sale->id,
+            'product_id' => $this->product1->id,
+            'quantity' => 3,
+            'unit_price' => 100.00,
+            'subtotal' => 300.00,
+        ]);
+        $this->assertEquals($stockBefore, $this->product1->fresh()->getStock());
+    }
+
+    // ====== TASK 2.2: Sale Destroy ======
+
+    public function test_destroy_restores_stock_and_deletes_sale(): void
+    {
+        $sale = Sale::create([
+            'client_id' => $this->client->id,
+            'date' => now()->toDateString(),
+            'total' => 300.00,
+        ]);
+        SaleDetail::create([
+            'sale_id' => $sale->id,
+            'product_id' => $this->product1->id,
+            'quantity' => 3,
+            'unit_price' => 100.00,
+            'purchase_cost_at_sale' => 50.00,
+            'subtotal' => 300.00,
+        ]);
+
+        // Stock should be reduced
+        $this->assertEquals(97, $this->product1->fresh()->getStock());
+
+        $response = $this->actingAs($this->user)->delete(route('sales.destroy', $sale->id));
+
+        $response->assertRedirect(route('sales.index'));
+        $this->assertDatabaseMissing('sales', ['id' => $sale->id]);
+        $this->assertDatabaseCount('sale_details', 0);
+        // Stock should be restored (restoreStock increments initial_stock)
+        $this->assertEquals(103, $this->product1->fresh()->getStock());
     }
 }
