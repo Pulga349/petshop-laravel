@@ -12,17 +12,18 @@ class ProductController extends Controller
 {
     public function index(): View
     {
-        $products = Product::with('supplier')->paginate(15);
-        
-        // Basic KPIs
+        $products = Product::with('supplier')->withStock()->paginate(15);
+
+        // Basic KPIs using scopeWithStock data
         $totalProducts = Product::count();
-        
+
+        // Use scopeWithStock for O(1) KPI computation
+        $allProducts = Product::withStock()->get();
         $outOfStockCount = 0;
         $totalInventoryValue = 0;
-        
-        $allProducts = Product::all();
+
         foreach ($allProducts as $product) {
-            $stock = $product->getStock();
+            $stock = (int) $product->stock;
             if ($stock <= 0) {
                 $outOfStockCount++;
             }
