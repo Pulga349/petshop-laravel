@@ -24,7 +24,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-gray-400">Categoría</p>
-                    <p class="text-lg text-gray-200">{{ $product->category ?? '-' }}</p>
+                    <p class="text-lg text-gray-200">{{ $product->category_name ?? '-' }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-gray-400">Stock</p>
@@ -76,7 +76,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-gray-400">Categoría</p>
-                    <p class="text-lg text-gray-200">{{ $product->supplier->category ?? '-' }}</p>
+                    <p class="text-lg text-gray-200">{{ $product->supplier->category_name ?? '-' }}</p>
                 </div>
             </div>
         </div>

@@ -99,7 +99,7 @@
                     </td>
                     <td class="px-8 py-6">
                         <span class="px-3 py-1.5 bg-white/5 border border-white/5 text-[10px] font-black text-gray-400 rounded-lg uppercase tracking-widest">
-                            {{ $product->category ?? 'General' }}
+                            {{ $product->category_name ?? 'General' }}
                         </span>
                     </td>
                     <td class="px-8 py-6">

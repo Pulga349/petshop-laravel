@@ -85,7 +85,7 @@
                             <select name="category" required
                                     class="w-full bg-[#1a1c23]/60 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 appearance-none transition-all text-left">
                                 @foreach(config('categories.products') as $cat)
-                                <option value="{{ $cat }}" {{ old('category', $product->category) == $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                                <option value="{{ $cat }}" {{ old('category', $product->category_name) == $cat ? 'selected' : '' }}>{{ $cat }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -207,7 +207,7 @@
                         <select name="category" required
                                 class="w-full bg-[#1a1c23]/60 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 appearance-none transition-all text-left">
                             @foreach(config('categories.products') as $cat)
-                            <option value="{{ $cat }}" {{ old('category', $product->category) == $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                            <option value="{{ $cat }}" {{ old('category', $product->category_name) == $cat ? 'selected' : '' }}>{{ $cat }}</option>
                             @endforeach
                         </select>
                     </div>

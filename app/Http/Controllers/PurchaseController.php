@@ -42,11 +42,8 @@ class PurchaseController extends Controller
 
     public function store(StorePurchaseRequest $request): RedirectResponse
     {
-        // FormRequest handles basic validation
         $validated = $request->validated();
 
-        // VALIDACIÓN DE STOCK NO ES NECESARIA EN COMPRAS (solo suma)
-        // Pero sí validamos que los productos pertenezcan al proveedor
         foreach ($validated['items'] as $item) {
             $product = Product::findOrFail($item['product_id']);
             if ($product->supplier_id != $validated['supplier_id']) {
@@ -56,13 +53,19 @@ class PurchaseController extends Controller
             }
         }
 
-        // TRANSACCIÓN PARA CONSISTENCIA
         try {
             DB::transaction(function () use ($validated) {
+                // Calculate total from items
+                $total = 0;
+                foreach ($validated['items'] as $item) {
+                    $total += $item['quantity'] * $item['unit_price'];
+                }
+
                 // 1. Crear la compra
                 $purchase = Purchase::create([
                     'supplier_id' => $validated['supplier_id'],
                     'date' => $validated['date'],
+                    'total' => $total,
                 ]);
 
                 // 2. Crear los detalles
@@ -82,6 +85,66 @@ class PurchaseController extends Controller
             return redirect()->route('purchases.index')->with('success', 'Compra registrada correctamente');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Error al registrar la compra: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    public function edit(Purchase $purchase): View
+    {
+        $purchase->load(['supplier', 'details.product']);
+        $suppliers = Supplier::all();
+        $products = Product::with('supplier')->get();
+        return view('purchases.edit', compact('purchase', 'suppliers', 'products'));
+    }
+
+    public function update(UpdatePurchaseRequest $request, Purchase $purchase): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        try {
+            DB::transaction(function () use ($validated, $purchase) {
+                // Delete existing details
+                $purchase->details()->delete();
+
+                // Calculate new total from items
+                $total = 0;
+                foreach ($validated['items'] as $item) {
+                    $subtotal = $item['quantity'] * $item['unit_price'];
+                    $total += $subtotal;
+
+                    PurchaseDetail::create([
+                        'purchase_id' => $purchase->id,
+                        'product_id' => $item['product_id'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unit_price'],
+                        'subtotal' => $subtotal,
+                    ]);
+                }
+
+                // Update purchase with new total
+                $purchase->update([
+                    'supplier_id' => $validated['supplier_id'],
+                    'date' => $validated['date'],
+                    'total' => $total,
+                ]);
+            });
+
+            return redirect()->route('purchases.index')->with('success', 'Compra actualizada correctamente');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Error al actualizar la compra: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    public function destroy(Purchase $purchase): RedirectResponse
+    {
+        try {
+            DB::transaction(function () use ($purchase) {
+                $purchase->details()->delete();
+                $purchase->delete();
+            });
+
+            return redirect()->route('purchases.index')->with('success', 'Compra eliminada correctamente');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Error al eliminar la compra: ' . $e->getMessage()])->withInput();
         }
     }
 }

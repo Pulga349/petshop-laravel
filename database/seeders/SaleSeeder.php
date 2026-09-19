@@ -47,5 +47,15 @@ class SaleSeeder extends Seeder
 
             $sale->update(['total' => $total]);
         }
+
+        $salesByClient = Sale::query()
+            ->selectRaw('client_id, SUM(total) as total_spent')
+            ->groupBy('client_id')
+            ->pluck('total_spent', 'client_id');
+
+        foreach ($clients as $client) {
+            $client->total_spent = (float) ($salesByClient[$client->id] ?? 0);
+            $client->recalculateTier();
+        }
     }
 }
