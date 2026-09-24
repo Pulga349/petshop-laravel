@@ -1,28 +1,8 @@
 @php
-    // Mapeo de mensajes a iconos (sin texto visible)
-    $iconOnly = [
-        'creado correctamente' => 'success',
-        'actualizado correctamente' => 'success',
-        'eliminado correctamente' => 'success',
-        'guardado' => 'success',
-    ];
-    
     $flashes = [];
-    
+
     if (Session::has('success')) {
-        $msg = Session::get('success');
-        $type = 'success';
-        
-        // Buscar si es un mensaje que conocemos para solo icono
-        foreach ($iconOnly as $pattern => $t) {
-            if (stripos($msg, $pattern) !== false) {
-                $type = $t;
-                $msg = ''; // Sin texto
-                break;
-            }
-        }
-        
-        $flashes[] = ['type' => $type, 'message' => $msg, 'duration' => 3000];
+        $flashes[] = ['type' => 'success', 'message' => Session::get('success'), 'duration' => 3000];
     }
     if (Session::has('error')) {
         $flashes[] = ['type' => 'error', 'message' => Session::get('error'), 'duration' => 0];

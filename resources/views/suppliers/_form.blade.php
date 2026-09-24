@@ -1,0 +1,20 @@
+@php($editing = $supplier !== null)
+<div class="mx-auto max-w-4xl">
+    <div class="mb-6 flex items-start justify-between gap-4"><div><p class="text-sm font-medium text-accent">Catálogo</p><h1 class="mt-1 text-2xl font-bold text-white">{{ $editing ? 'Editar proveedor' : 'Nuevo proveedor' }}</h1><p class="mt-1 text-sm text-neutral-400">Mantén actualizados los datos de contacto y estado.</p></div><a href="{{ route('suppliers.index') }}" class="icon-button" aria-label="Cerrar formulario"><i class="bi bi-x-lg"></i></a></div>
+    <form action="{{ $action }}" method="POST" enctype="multipart/form-data" class="form-panel">
+        @csrf @if($editing) @method('PUT') @endif
+        <section class="form-section"><h2 class="text-lg font-semibold text-white">Datos del proveedor</h2><p>Información principal para identificar al socio comercial.</p><div class="mt-5 grid gap-5 sm:grid-cols-2">
+            <div><label for="name" class="field-label">Nombre de empresa <span class="required">*</span></label><input id="name" name="name" value="{{ old('name', $supplier?->name) }}" required class="field-control">@error('name')<p class="field-error">{{ $message }}</p>@enderror</div>
+            <div><label for="contact_person" class="field-label">Persona de contacto</label><input id="contact_person" name="contact_person" value="{{ old('contact_person', $supplier?->contact_person) }}" class="field-control">@error('contact_person')<p class="field-error">{{ $message }}</p>@enderror</div>
+            <div><label for="category" class="field-label">Categoría <span class="required">*</span></label><select id="category" name="category" required class="field-control">@foreach(config('categories.suppliers') as $cat)<option value="{{ $cat }}" @selected(old('category', $supplier?->category_name) === $cat)>{{ $cat }}</option>@endforeach</select>@error('category')<p class="field-error">{{ $message }}</p>@enderror</div>
+            <div><label for="status" class="field-label">Estado <span class="required">*</span></label><select id="status" name="status" required class="field-control"><option value="Active" @selected(old('status', $supplier?->status ?? 'Active') === 'Active')>Activo</option><option value="Inactive" @selected(old('status', $supplier?->status) === 'Inactive')>Inactivo</option></select>@error('status')<p class="field-error">{{ $message }}</p>@enderror</div>
+        </div></section>
+        <section class="form-section"><h2 class="text-lg font-semibold text-white">Contacto y ubicación</h2><p>Estos datos facilitan la comunicación y la logística.</p><div class="mt-5 grid gap-5 sm:grid-cols-2">
+            <div><label for="email" class="field-label">Correo electrónico</label><input id="email" type="email" name="email" value="{{ old('email', $supplier?->email) }}" class="field-control">@error('email')<p class="field-error">{{ $message }}</p>@enderror</div>
+            <div><label for="phone" class="field-label">Teléfono</label><input id="phone" name="phone" value="{{ old('phone', $supplier?->phone) }}" class="field-control">@error('phone')<p class="field-error">{{ $message }}</p>@enderror</div>
+            <div class="sm:col-span-2"><label for="address" class="field-label">Dirección</label><input id="address" name="address" value="{{ old('address', $supplier?->address) }}" class="field-control">@error('address')<p class="field-error">{{ $message }}</p>@enderror</div>
+        </div></section>
+        <section class="form-section"><h2 class="text-lg font-semibold text-white">Identidad visual</h2><p>Opcional: agrega el logo del proveedor.</p><div class="mt-5"><label for="logo" class="field-label">Logo</label><input id="logo" type="file" name="logo" accept="image/*" class="field-control py-2">@error('logo')<p class="field-error">{{ $message }}</p>@enderror</div></section>
+        <div class="form-actions"><a href="{{ route('suppliers.index') }}" class="btn-secondary">Cancelar</a><button type="submit" class="btn-primary">{{ $editing ? 'Guardar cambios' : 'Guardar proveedor' }}</button></div>
+    </form>
+</div>

@@ -1,124 +1,112 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <!-- Blurred Background Overlay -->
-    <div class="absolute inset-0 bg-[#0b0c10]/60 backdrop-blur-xl"
-         onclick="window.location.href='{{ route('sales.index') }}'"></div>
+<div class="mx-auto flex min-h-[calc(100vh-8rem)] items-start justify-center py-2">
 
     <!-- Modal Container -->
-    <div class="relative w-full max-w-6xl transform transition-all">
-        <!-- Subtle outer glow -->
-        <div class="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-[2rem] blur-2xl opacity-50"></div>
-
-        <!-- Glassmorphism Modal -->
-        <div class="relative bg-[#1a1c23]/40 backdrop-blur-3xl border border-white/10 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] flex flex-col max-h-[85vh]">
+    <div class="w-full max-w-6xl">
+        <div class="form-panel flex max-h-[calc(100vh-9rem)] flex-col">
 
             <!-- Sticky Header with Close Button -->
-            <div class="flex items-center justify-between p-8 pb-4 shrink-0">
-                <div class="flex-1"></div>
-                <div class="text-center flex-1">
-                    <h2 class="text-2xl font-black text-white tracking-tight uppercase">Editar Venta</h2>
-                    <div class="h-1 w-16 bg-blue-600 mx-auto mt-2 rounded-full"></div>
-                </div>
-                <div class="flex-1 flex justify-end">
-                    <a href="{{ route('sales.index') }}" class="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-all" title="Cerrar">
-                        <i class="bi bi-x-lg text-lg"></i>
-                    </a>
-                </div>
+            <div class="flex shrink-0 items-center justify-between border-b border-line p-6 pb-4">
+                <h2 class="text-xl font-bold tracking-tight text-white">Editar Venta</h2>
+                <a href="{{ route('sales.index') }}" class="icon-button" title="Cerrar">
+                    <i class="bi bi-x-lg"></i>
+                </a>
             </div>
 
-            <form action="{{ route('sales.update', $sale) }}" method="POST" id="saleForm" class="flex flex-col flex-1 min-h-0">
+            <form action="{{ route('sales.update', $sale) }}" method="POST" id="saleForm" class="flex min-h-0 flex-1 flex-col">
                 @csrf
                 @method('PUT')
 
                 <!-- Scrollable Body -->
-                <div class="flex-1 overflow-y-auto px-8">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <!-- Client -->
-                        <div class="md:col-span-2 space-y-1.5">
-                            <label class="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Selección de Cliente</label>
-                            <select name="client_id" id="client_id" required
-                                    class="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 appearance-none transition-all text-left">
-                                <option value="">Seleccionar cliente...</option>
-                                @foreach($clients as $client)
-                                    <option value="{{ $client->id }}" {{ old('client_id', $sale->client_id) == $client->id ? 'selected' : '' }}>{{ $client->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                <div class="min-h-0 flex-1 overflow-y-auto">
+                    <section class="form-section">
+                        <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
+                            <!-- Client -->
+                            <div class="md:col-span-2">
+                                <label for="client_id" class="field-label">Cliente <span class="required">*</span></label>
+                                <select name="client_id" id="client_id" required class="field-control appearance-none">
+                                    <option value="">Seleccionar cliente...</option>
+                                    @foreach($clients as $client)
+                                        <option value="{{ $client->id }}" {{ old('client_id', $sale->client_id) == $client->id ? 'selected' : '' }}>{{ $client->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('client_id')<p class="field-error">{{ $message }}</p>@enderror
+                            </div>
 
-                        <!-- Date -->
-                        <div class="space-y-1.5">
-                            <label class="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">Fecha de Venta</label>
-                            <input type="date" name="date" value="{{ old('date', $sale->date) }}" required
-                                   class="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all">
+                            <!-- Date -->
+                            <div>
+                                <label for="sale_date" class="field-label">Fecha de venta <span class="required">*</span></label>
+                                <input id="sale_date" type="date" name="date" value="{{ old('date', $sale->date) }}" required
+                                       class="field-control">
+                                @error('date')<p class="field-error">{{ $message }}</p>@enderror
+                            </div>
                         </div>
-                    </div>
+                    </section>
 
                     <!-- Items Section -->
-                    <div class="bg-white/5 border border-white/5 rounded-2xl p-6 mb-8">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-[10px] font-black text-white uppercase tracking-[0.2em]">Detalles de la Transacción</h3>
-                            <button type="button" id="addItem" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black rounded-lg transition-all shadow-lg shadow-blue-600/20 uppercase tracking-widest">
-                                <i class="bi bi-cart-plus mr-1"></i> Añadir Ítem
+                    <section class="form-section">
+                        <div class="mb-4 flex items-center justify-between gap-4">
+                            <h3>Detalles de la Transacción</h3>
+                            <button type="button" id="addItem" class="btn-secondary">
+                                <i class="bi bi-cart-plus" aria-hidden="true"></i> Añadir Ítem
                             </button>
                         </div>
 
                         <div id="itemsContainer" class="space-y-3">
                             @foreach($sale->details as $index => $detail)
-                                <div class="item-row grid grid-cols-12 gap-3 items-end p-4 bg-white/5 border border-white/5 rounded-xl group transition-colors hover:border-white/10">
-                                    <div class="col-span-12 md:col-span-5 space-y-1.5 text-left">
-                                        <label class="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Selección de Inventario</label>
-                                        <select name="items[{{ $index }}][product_id]" class="product-select w-full px-3 py-2 bg-[#1a1c23] border border-white/5 rounded-lg text-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all text-left" required>
+                                <div class="item-row grid grid-cols-12 items-end gap-3 border border-line bg-surface-raised p-4 transition-colors hover:bg-surface-hover group">
+                                    <div class="col-span-12 md:col-span-5">
+                                        <label class="field-label">Selección de Inventario</label>
+                                        <select name="items[{{ $index }}][product_id]" class="product-select field-control appearance-none" required>
                                             @foreach($products as $product)
                                                 <option value="{{ $product->id }}" {{ old('items.' . $index . '.product_id', $detail->product_id) == $product->id ? 'selected' : '' }} data-stock="{{ $product->getStock() }}" data-price="{{ $product->sale_price }}">{{ $product->name }} (Stock: {{ $product->getStock() }})</option>
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="col-span-4 md:col-span-2 space-y-1.5 text-left">
-                                        <label class="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Cant.</label>
-                                        <input type="number" name="items[{{ $index }}][quantity]" min="1" value="{{ old('items.' . $index . '.quantity', $detail->quantity) }}" class="quantity-input w-full px-3 py-2 bg-[#1a1c23] border border-white/5 rounded-lg text-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all" required>
+                                    <div class="col-span-4 md:col-span-2">
+                                        <label class="field-label">Cant.</label>
+                                        <input type="number" name="items[{{ $index }}][quantity]" min="1" value="{{ old('items.' . $index . '.quantity', $detail->quantity) }}" class="quantity-input field-control font-mono" required>
                                     </div>
-                                    <div class="col-span-4 md:col-span-2 space-y-1.5 text-left">
-                                        <label class="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">P. Unitario</label>
-                                        <input type="number" name="items[{{ $index }}][unit_price]" step="0.01" min="0" value="{{ old('items.' . $index . '.unit_price', $detail->unit_price) }}" class="unit-price-input w-full px-3 py-2 bg-[#1a1c23] border border-white/5 rounded-lg text-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all" required placeholder="0.00">
+                                    <div class="col-span-4 md:col-span-2">
+                                        <label class="field-label">P. Unitario</label>
+                                        <input type="number" name="items[{{ $index }}][unit_price]" step="0.01" min="0" value="{{ old('items.' . $index . '.unit_price', $detail->unit_price) }}" class="unit-price-input field-control font-mono" required placeholder="0.00">
                                     </div>
-                                    <div class="col-span-3 md:col-span-2 space-y-1.5">
-                                        <label class="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1 text-right block pr-2">Subtotal</label>
-                                        <div class="subtotal-display px-3 py-2 text-white font-black text-xs text-right">${{ number_format(old('items.' . $index . '.unit_price', $detail->unit_price) * old('items.' . $index . '.quantity', $detail->quantity), 2) }}</div>
+                                    <div class="col-span-3 md:col-span-2">
+                                        <label class="field-label text-right">Subtotal</label>
+                                        <div class="subtotal-display px-1 py-2 text-right font-mono text-sm font-semibold text-white">${{ number_format(old('items.' . $index . '.unit_price', $detail->unit_price) * old('items.' . $index . '.quantity', $detail->quantity), 2) }}</div>
                                     </div>
                                     <div class="col-span-1">
-                                        <button type="button" class="remove-item w-full h-8 flex items-center justify-center bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg transition-all">
-                                            <i class="bi bi-trash text-xs"></i>
+                                        <button type="button" class="remove-item btn-danger h-11 w-full px-0">
+                                <i class="bi bi-trash text-xs" aria-hidden="true"></i><span class="sr-only">Eliminar ítem</span>
                                         </button>
                                     </div>
                                 </div>
                             @endforeach
                             @if($sale->details->isEmpty() || !old('items'))
-                                <div class="text-center text-gray-500 text-sm italic py-4">No hay ítems. Agregue al menos uno.</div>
+                                <div class="py-4 text-center text-sm italic text-neutral-400">No hay ítems. Agregue al menos uno.</div>
                             @endif
                         </div>
 
                         @error('items')
-                            <p class="mt-3 text-[10px] font-bold text-red-500 uppercase tracking-widest">{{ $message }}</p>
+                            <p class="field-error mt-3">{{ $message }}</p>
                         @enderror
-                    </div>
+                    </section>
                 </div>
 
                 <!-- Sticky Footer -->
-                <div class="flex flex-col sm:flex-row items-center justify-between gap-6 px-8 pb-8 pt-6 border-t border-white/5 shrink-0">
-                    <div class="flex items-baseline gap-3">
-                        <span class="text-[10px] font-black text-gray-500 uppercase tracking-widest">Ingreso Bruto</span>
-                        <span id="totalDisplay" class="text-3xl font-black text-emerald-400 tracking-tight">$0.00</span>
+                <div class="form-actions">
+                    <div class="flex items-baseline gap-3 sm:mr-auto">
+                        <span class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Ingreso Bruto</span>
+                        <span id="totalDisplay" class="font-mono text-3xl font-bold text-white">$0.00</span>
                     </div>
 
-                    <div class="flex items-center gap-4 w-full sm:w-auto">
-                        <a href="{{ route('sales.index') }}"
-                           class="px-6 py-3 bg-white/5 hover:bg-white/10 text-white text-xs font-black rounded-xl transition-all border border-white/5 uppercase tracking-widest text-center flex-1 sm:flex-none">
+                    <div class="flex w-full items-center gap-3 sm:w-auto">
+                        <a href="{{ route('sales.index') }}" class="btn-secondary flex-1 sm:flex-none">
                             Abortar
                         </a>
-                        <button type="submit"
-                                class="flex-1 sm:flex-none px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black rounded-xl transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] uppercase tracking-[0.2em]">
+                        <button type="submit" class="btn-primary flex-1 sm:flex-none">
                             Actualizar Venta
                         </button>
                     </div>
@@ -130,43 +118,35 @@
 
 <!-- Hidden template for items -->
 <template id="itemTemplate">
-    <div class="item-row grid grid-cols-12 gap-3 items-end p-4 bg-white/5 border border-white/5 rounded-xl group transition-colors hover:border-white/10">
-        <div class="col-span-12 md:col-span-5 space-y-1.5 text-left">
-            <label class="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Selección de Inventario</label>
-            <select name="items[__INDEX__][product_id]" class="product-select w-full px-3 py-2 bg-[#1a1c23] border border-white/5 rounded-lg text-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all text-left" required>
+    <div class="item-row grid grid-cols-12 items-end gap-3 border border-line bg-surface-raised p-4 transition-colors hover:bg-surface-hover group">
+        <div class="col-span-12 md:col-span-5">
+            <label class="field-label">Selección de Inventario</label>
+            <select name="items[__INDEX__][product_id]" class="product-select field-control appearance-none" required>
                 <option value="">Buscar producto...</option>
                 @foreach($products as $product)
                     <option value="{{ $product->id }}" data-stock="{{ $product->getStock() }}" data-price="{{ $product->sale_price }}">{{ $product->name }} (Stock: {{ $product->getStock() }})</option>
                 @endforeach
             </select>
         </div>
-        <div class="col-span-4 md:col-span-2 space-y-1.5 text-left">
-            <label class="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">Cant.</label>
-            <input type="number" name="items[__INDEX__][quantity]" min="1" value="1" class="quantity-input w-full px-3 py-2 bg-[#1a1c23] border border-white/5 rounded-lg text-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all" required>
+        <div class="col-span-4 md:col-span-2">
+            <label class="field-label">Cant.</label>
+            <input type="number" name="items[__INDEX__][quantity]" min="1" value="1" class="quantity-input field-control font-mono" required>
         </div>
-        <div class="col-span-4 md:col-span-2 space-y-1.5 text-left">
-            <label class="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1">P. Unitario</label>
-            <input type="number" name="items[__INDEX__][unit_price]" step="0.01" min="0" class="unit-price-input w-full px-3 py-2 bg-[#1a1c23] border border-white/5 rounded-lg text-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all" required placeholder="0.00">
+        <div class="col-span-4 md:col-span-2">
+            <label class="field-label">P. Unitario</label>
+            <input type="number" name="items[__INDEX__][unit_price]" step="0.01" min="0" class="unit-price-input field-control font-mono" required placeholder="0.00">
         </div>
-        <div class="col-span-3 md:col-span-2 space-y-1.5">
-            <label class="text-[8px] font-black text-gray-600 uppercase tracking-[0.2em] ml-1 text-right block pr-2">Subtotal</label>
-            <div class="subtotal-display px-3 py-2 text-white font-black text-xs text-right">$0.00</div>
+        <div class="col-span-3 md:col-span-2">
+            <label class="field-label text-right">Subtotal</label>
+            <div class="subtotal-display px-1 py-2 text-right font-mono text-sm font-semibold text-white">$0.00</div>
         </div>
         <div class="col-span-1">
-            <button type="button" class="remove-item w-full h-8 flex items-center justify-center bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-lg transition-all">
+            <button type="button" class="remove-item btn-danger h-11 w-full px-0">
                 <i class="bi bi-trash text-xs"></i>
             </button>
         </div>
     </div>
 </template>
-
-<!-- Background Content -->
-<div class="opacity-10 pointer-events-none blur-md">
-    <div class="p-8 space-y-8">
-        <div class="h-10 w-48 bg-gray-700 rounded-full"></div>
-        <div class="bg-gray-800 rounded-[2.5rem] h-[600px]"></div>
-    </div>
-</div>
 
 @push('scripts')
 <script>
