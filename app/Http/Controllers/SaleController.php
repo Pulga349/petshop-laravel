@@ -7,23 +7,31 @@ use App\Models\Sale;
 use App\Models\SaleDetail;
 use App\Models\Client;
 use App\Models\Product;
+use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Illuminate\Http\Request;
 
 class SaleController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $sales = Sale::with('client')->paginate(15);
-        return view('sales.index', compact('sales'));
+        $search = trim((string) $request->query('search', ''));
+        $sort = in_array($request->query('sort'), ['date', 'total', 'created_at'], true) ? $request->query('sort') : 'date';
+        $direction = $request->query('direction') === 'asc' ? 'asc' : 'desc';
+        $sales = Sale::with('client')
+            ->when($search !== '', fn ($query) => $query->whereHas('client', fn ($client) => $client->where('name', 'like', "%{$search}%"))->orWhere('sales.id', $search))
+            ->orderBy($sort, $direction)
+            ->paginate(15)
+            ->withQueryString();
+        return view('sales.index', compact('sales', 'search', 'sort', 'direction'));
     }
 
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        $clients = Client::all();
-        $products = Product::with('supplier')->get();
-        return view('sales.create', compact('clients', 'products'));
+        // The POS terminal moved to its own route; keep old links working.
+        return redirect()->route('pos');
     }
 
     public function show(Sale $sale): View
@@ -50,20 +58,41 @@ class SaleController extends Controller
             return back()->withErrors(['items' => $stockErrors])->withInput();
         }
 
-        try {
-            DB::transaction(function () use ($validated) {
-                $total = 0;
+        // Server-authoritative totals, computed before any write so an insufficient
+        // cash payment never creates a sale (prices include VAT; discount by tier).
+        $subtotal = 0;
+        foreach ($validated['items'] as $item) {
+            $subtotal += $item['quantity'] * $item['unit_price'];
+        }
 
+        $client = Client::findOrFail($validated['client_id']);
+        $discountPercent = (float) Setting::get('discount_' . strtolower($client->tier ?? 'Bronze'), 0);
+        $discountAmount = round($subtotal * $discountPercent / 100, 2);
+        $total = round($subtotal - $discountAmount, 2);
+        $ivaRate = (float) Setting::get('iva_rate', 21);
+        // VAT-included prices: IVA is the derived portion of the final total.
+        $ivaAmount = round($total * $ivaRate / (100 + $ivaRate), 2);
+        $paymentMethod = $validated['payment_method'] ?? null;
+        $amountPaid = isset($validated['amount_paid']) ? round((float) $validated['amount_paid'], 2) : null;
+
+        if ($paymentMethod === 'efectivo' && ($amountPaid ?? 0) < $total) {
+            return back()->withErrors(['amount_paid' => 'El monto recibido es insuficiente.'])->withInput();
+        }
+
+        try {
+            DB::transaction(function () use ($validated, $client, $total, $discountAmount, $ivaAmount, $paymentMethod, $amountPaid) {
                 $sale = Sale::create([
                     'client_id' => $validated['client_id'],
                     'date' => $validated['date'],
-                    'total' => 0,
+                    'total' => $total,
+                    'discount_amount' => $discountAmount,
+                    'iva_amount' => $ivaAmount,
+                    'payment_method' => $paymentMethod,
+                    'amount_paid' => $amountPaid,
                 ]);
 
                 foreach ($validated['items'] as $item) {
                     $product = Product::findOrFail($item['product_id']);
-                    $subtotal = $item['quantity'] * $item['unit_price'];
-                    $total += $subtotal;
 
                     SaleDetail::create([
                         'sale_id' => $sale->id,
@@ -71,13 +100,10 @@ class SaleController extends Controller
                         'quantity' => $item['quantity'],
                         'unit_price' => $item['unit_price'],
                         'purchase_cost_at_sale' => $product->purchase_price,
-                        'subtotal' => $subtotal,
+                        'subtotal' => $item['quantity'] * $item['unit_price'],
                     ]);
                 }
 
-                $sale->update(['total' => $total]);
-
-                $client = $sale->client;
                 $client->total_spent = Sale::where('client_id', $client->id)->sum('total');
                 $client->recalculateTier();
             });
@@ -102,31 +128,63 @@ class SaleController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $sale) {
-                // Delete old details
-                $sale->details()->delete();
+                // Rebuild details only when items were submitted; otherwise keep the
+                // existing ones (UpdateSaleRequest allows items to be omitted).
+                if (!empty($validated['items'])) {
+                    $sale->details()->delete();
 
-                // Calculate new total
-                $total = 0;
-                foreach ($validated['items'] as $item) {
-                    $product = Product::findOrFail($item['product_id']);
-                    $subtotal = $item['quantity'] * $item['unit_price'];
-                    $total += $subtotal;
+                    $subtotal = 0;
+                    foreach ($validated['items'] as $item) {
+                        $product = Product::findOrFail($item['product_id']);
+                        $lineSubtotal = $item['quantity'] * $item['unit_price'];
+                        $subtotal += $lineSubtotal;
 
-                    SaleDetail::create([
-                        'sale_id' => $sale->id,
-                        'product_id' => $item['product_id'],
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $item['unit_price'],
-                        'purchase_cost_at_sale' => $product->purchase_price,
-                        'subtotal' => $subtotal,
-                    ]);
+                        SaleDetail::create([
+                            'sale_id' => $sale->id,
+                            'product_id' => $item['product_id'],
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $item['unit_price'],
+                            'purchase_cost_at_sale' => $product->purchase_price,
+                            'subtotal' => $lineSubtotal,
+                        ]);
+                    }
+                } else {
+                    $subtotal = (float) $sale->details()->sum('subtotal');
                 }
 
-                // Update sale total
-                $sale->update(['total' => $total]);
+                // Discount/VAT/total follow the effective client tier (prices include VAT)
+                $effectiveClientId = $validated['client_id'] ?? $sale->client_id;
+                $client = Client::findOrFail($effectiveClientId);
+                $discountPercent = (float) Setting::get('discount_' . strtolower($client->tier ?? 'Bronze'), 0);
+                $discountAmount = round($subtotal * $discountPercent / 100, 2);
+                $total = round($subtotal - $discountAmount, 2);
+                $ivaRate = (float) Setting::get('iva_rate', 21);
+                $ivaAmount = round($total * $ivaRate / (100 + $ivaRate), 2);
+
+                $update = [
+                    'total' => $total,
+                    'discount_amount' => $discountAmount,
+                    'iva_amount' => $ivaAmount,
+                ];
+
+                if (array_key_exists('client_id', $validated) && $validated['client_id'] !== null) {
+                    $update['client_id'] = $validated['client_id'];
+                }
+                if (array_key_exists('date', $validated) && $validated['date'] !== null) {
+                    $update['date'] = $validated['date'];
+                }
+                if (array_key_exists('payment_method', $validated)) {
+                    $update['payment_method'] = $validated['payment_method'];
+                }
+                if (array_key_exists('amount_paid', $validated)) {
+                    $update['amount_paid'] = $validated['amount_paid'] !== null
+                        ? round((float) $validated['amount_paid'], 2)
+                        : null;
+                }
+
+                $sale->update($update);
 
                 // Recalculate client tier
-                $client = $sale->client;
                 $client->total_spent = Sale::where('client_id', $client->id)->sum('total');
                 $client->recalculateTier();
             });

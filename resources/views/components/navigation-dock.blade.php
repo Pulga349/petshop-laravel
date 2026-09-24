@@ -1,17 +1,17 @@
-<div class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-3">
-    <div class="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-2 flex items-center gap-1 shadow-2xl">
+<div class="fixed bottom-4 left-1/2 z-[100] flex -translate-x-1/2 flex-col items-center gap-2">
+    <div class="flex items-center gap-1 border border-line bg-surface-raised p-2">
         {{-- Logout --}}
         <form method="POST" action="{{ route('logout') }}" id="logout-dock-form">
             @csrf
-            <button type="submit" data-nav-key="q" class="p-3 rounded-xl hover:bg-white/10 transition-all text-gray-400 hover:text-red-400 group relative flex items-center justify-center" title="Cerrar Sesión (Ctrl + Q)">
+            <button type="submit" data-nav-key="q" class="icon-button group relative text-neutral-400 hover:bg-danger/10 hover:text-white" title="Cerrar sesión (Ctrl + Q)" aria-label="Cerrar sesión">
                 <i class="bi bi-box-arrow-right text-xl"></i>
-                <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <span class="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 border border-line bg-surface-raised px-2 py-0.5 text-[10px] font-bold text-white opacity-0 transition-opacity group-hover:opacity-100">
                     Q
                 </span>
             </button>
         </form>
 
-        <div class="w-px h-6 bg-white/20 mx-1"></div>
+        <div class="mx-1 h-6 w-px bg-line"></div>
 
         {{-- Nav Links --}}
         @php
@@ -20,7 +20,7 @@
                 ['route' => 'products.index', 'icon' => 'bi-box-seam', 'active_icon' => 'bi-box-seam-fill', 'label' => 'Productos', 'key' => '2'],
                 ['route' => 'suppliers.index', 'icon' => 'bi-truck', 'active_icon' => 'bi-truck', 'label' => 'Proveedores', 'key' => '3'],
                 ['route' => 'purchases.index', 'icon' => 'bi-cart-check', 'active_icon' => 'bi-cart-check-fill', 'label' => 'Compras', 'key' => '4'],
-                ['route' => 'sales.index', 'icon' => 'bi-cash-stack', 'active_icon' => 'bi-cash-stack', 'label' => 'Ventas', 'key' => '5'],
+                ['route' => 'pos', 'icon' => 'bi-shop', 'active_icon' => 'bi-shop', 'label' => 'Punto de Venta', 'key' => '5'],
                 ['route' => 'clients.index', 'icon' => 'bi-people', 'active_icon' => 'bi-people-fill', 'label' => 'Clientes', 'key' => '6'],
             ];
         @endphp
@@ -32,19 +32,19 @@
             @endphp
             <a href="{{ route($link['route']) }}" 
                data-nav-key="{{ $link['key'] }}"
-               class="p-3 rounded-xl transition-all group relative flex items-center justify-center {{ $isActive ? 'bg-white/20 text-white shadow-inner' : 'text-gray-400 hover:bg-white/10 hover:text-white' }}"
-               title="{{ $link['label'] }}">
+               class="icon-button group relative {{ $isActive ? 'bg-surface-hover text-white' : 'text-neutral-400 hover:bg-surface-hover hover:text-white' }}"
+               title="{{ $link['label'] }}" aria-label="{{ $link['label'] }}">
                 <i class="bi {{ $currentIcon }} text-xl"></i>
                 
                 {{-- Shortcut Pill --}}
-                <span class="absolute -top-8 left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <span class="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 border border-line bg-surface-raised px-2 py-0.5 text-[10px] font-bold text-white opacity-0 transition-opacity group-hover:opacity-100">
                     {{ $link['key'] }}
                 </span>
             </a>
         @endforeach
     </div>
     
-    <div class="text-[10px] text-gray-500 font-medium tracking-wide">
-        Atajos: <span class="text-gray-400">Ctrl + 1..6</span> para navegar | <span class="text-gray-400">Ctrl + Q</span> para salir
+    <div class="hidden text-[10px] font-medium tracking-wide text-neutral-400 sm:block">
+        Atajos: <span class="text-white">Ctrl + 1..6</span> para navegar | <span class="text-white">Ctrl + Q</span> para salir
     </div>
 </div>
