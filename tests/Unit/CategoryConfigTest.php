@@ -10,7 +10,7 @@ class CategoryConfigTest extends TestCase
     {
         $products = config('categories.products');
         $this->assertEquals(
-            ['Nutrition', 'Accessories', 'Hygiene', 'Health', 'Other'],
+            ['Alimento', 'Accesorios', 'Higiene', 'Otros'],
             $products
         );
     }

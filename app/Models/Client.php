@@ -9,20 +9,29 @@ class Client extends Model {
     public function sales(): HasMany { return $this->hasMany(Sale::class); }
 
     /**
+     * Resolves the tier for a total spent amount using config('client_tiers.thresholds')
+     * (single source of truth, shared with ClientController).
+     */
+    public static function tierFor(float $totalSpent): string
+    {
+        foreach (config('client_tiers.thresholds', []) as $tier => $threshold) {
+            if ($totalSpent >= (float) $threshold) {
+                return (string) $tier;
+            }
+        }
+
+        return 'Bronze';
+    }
+
+    /**
      * Recomputes tier and status from total_spent using defined thresholds.
-     * Bronze < 1000, Silver >= 1000, Gold >= 5000, Platinum >= 10000.
      * Status is 'active' if total_spent > 0, otherwise 'inactive'.
      */
     public function recalculateTier(): void
     {
         $totalSpent = (float) ($this->total_spent ?? 0);
 
-        $this->tier = match(true) {
-            $totalSpent >= 10000 => 'Platinum',
-            $totalSpent >= 5000 => 'Gold',
-            $totalSpent >= 1000 => 'Silver',
-            default => 'Bronze',
-        };
+        $this->tier = self::tierFor($totalSpent);
 
         $this->status = $totalSpent > 0 ? 'active' : 'inactive';
         $this->save();

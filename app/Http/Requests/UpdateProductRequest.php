@@ -13,7 +13,7 @@ class UpdateProductRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'sku' => ['nullable', 'string', 'max:50', Rule::unique('products', 'sku')->ignore($this->route('product'))],
-            'category' => ['nullable', 'string', 'max:100'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'description' => ['nullable', 'string'],
             'image' => ['nullable', 'image', 'max:2048'],
             'sale_price' => ['required', 'numeric', 'min:0'],
@@ -33,6 +33,7 @@ class UpdateProductRequest extends FormRequest
             'purchase_price.min' => 'El precio de compra no puede ser negativo',
             'supplier_id.required' => 'El proveedor es obligatorio',
             'supplier_id.exists' => 'El proveedor seleccionado no existe',
+            'category_id.exists' => 'La categoría seleccionada no existe',
         ];
     }
 }
