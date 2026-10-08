@@ -10,11 +10,15 @@ use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Illuminate\Http\Request;
 
 class PurchaseController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $search = trim((string) $request->query('search', ''));
+        $sort = in_array($request->query('sort'), ['date', 'created_at'], true) ? $request->query('sort') : 'date';
+        $direction = $request->query('direction') === 'asc' ? 'asc' : 'desc';
         $purchases = Purchase::with('supplier')
             ->select('purchases.*')
             ->selectSub(
@@ -22,9 +26,12 @@ class PurchaseController extends Controller
                     ->whereColumn('purchase_id', 'purchases.id'),
                 'total_computed'
             )
-            ->paginate(15);
+            ->when($search !== '', fn ($query) => $query->whereHas('supplier', fn ($supplier) => $supplier->where('name', 'like', "%{$search}%"))->orWhere('purchases.id', $search))
+            ->orderBy($sort, $direction)
+            ->paginate(15)
+            ->withQueryString();
 
-        return view('purchases.index', compact('purchases'));
+        return view('purchases.index', compact('purchases', 'search', 'sort', 'direction'));
     }
 
     public function create(): View

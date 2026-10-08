@@ -7,12 +7,20 @@ use App\Models\Client;
 use App\Models\Sale;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use Illuminate\Http\Request;
 
 class ClientController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $clients = Client::with('sales')->paginate(15);
+        $search = trim((string) $request->query('search', ''));
+        $sort = in_array($request->query('sort'), ['name', 'created_at'], true) ? $request->query('sort') : 'created_at';
+        $direction = $request->query('direction') === 'asc' ? 'asc' : 'desc';
+        $clients = Client::with('sales')
+            ->when($search !== '', fn ($query) => $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")))
+            ->orderBy($sort, $direction)
+            ->paginate(15)
+            ->withQueryString();
 
         // KPI: clients created this month
         $newThisMonth = Client::whereMonth('created_at', now()->month)->count();
@@ -34,19 +42,14 @@ class ClientController extends Controller
         $distribution = ['Bronze' => 0, 'Silver' => 0, 'Gold' => 0, 'Platinum' => 0];
         foreach ($allClients as $c) {
             $spent = $c->sales->sum('total');
-            $tier = match (true) {
-                $spent >= 10000 => 'Platinum',
-                $spent >= 5000  => 'Gold',
-                $spent >= 1000  => 'Silver',
-                default         => 'Bronze',
-            };
+            $tier = Client::tierFor((float) $spent);
             $distribution[$tier]++;
         }
         $totalClients = max(count($allClients), 1); // avoid division by zero
         $membershipDistribution = array_map(fn ($count) => round(($count / $totalClients) * 100), $distribution);
 
         return view('clients.index', compact(
-            'clients', 'newThisMonth', 'topCustomer', 'chartData', 'membershipDistribution'
+            'clients', 'newThisMonth', 'topCustomer', 'chartData', 'membershipDistribution', 'search', 'sort', 'direction'
         ));
     }
 

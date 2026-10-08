@@ -7,13 +7,24 @@ use App\Models\Supplier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Request;
 
 class SupplierController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $suppliers = Supplier::paginate(15);
-        return view('suppliers.index', compact('suppliers'));
+        $search = trim((string) $request->query('search', ''));
+        $status = $request->query('status');
+        $category = $request->query('category');
+        $sort = in_array($request->query('sort'), ['name', 'created_at', 'status'], true) ? $request->query('sort') : 'created_at';
+        $direction = $request->query('direction') === 'asc' ? 'asc' : 'desc';
+        $suppliers = Supplier::when($search !== '', fn ($query) => $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")))
+            ->when($status, fn ($query) => $query->where('status', $status))
+            ->when($category, fn ($query) => $query->where('category', $category))
+            ->orderBy($sort, $direction)
+            ->paginate(15)
+            ->withQueryString();
+        return view('suppliers.index', compact('suppliers', 'search', 'status', 'category', 'sort', 'direction'));
     }
 
     public function store(StoreSupplierRequest $request): RedirectResponse

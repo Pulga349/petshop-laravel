@@ -18,6 +18,8 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard principal
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // Chart-only JSON payload (range-scoped), separate path so it never collides with /dashboard
+    Route::get('/dashboard/chart-data', [DashboardController::class, 'chartData'])->name('dashboard.chart-data');
 
     // Punto de venta (terminal POS, separada de la lista de ventas)
     Route::get('/pos', [PosController::class, 'create'])->name('pos');

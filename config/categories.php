@@ -2,11 +2,10 @@
 
 return [
     'products' => [
-        'Nutrition',
-        'Accessories',
-        'Hygiene',
-        'Health',
-        'Other',
+        'Alimento',
+        'Accesorios',
+        'Higiene',
+        'Otros',
     ],
 
     'suppliers' => [

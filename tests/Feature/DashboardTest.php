@@ -137,6 +137,30 @@ class DashboardTest extends TestCase
         $this->assertSame(1, substr_count($response->getContent(), 'id="monthlyTrendChart"'));
     }
 
+    public function test_dashboard_does_not_render_quick_actions_or_header_cta(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('dashboard'));
+
+        $response->assertStatus(200);
+        $response->assertDontSee('Acciones rápidas');
+        $response->assertDontSee('Nueva venta');
+        $response->assertDontSee('Nueva compra');
+        $response->assertDontSee('Nuevo proveedor');
+        $response->assertDontSee('dashboard-period');
+    }
+
+    public function test_dashboard_renders_range_selector_in_chart_section(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('dashboard'));
+
+        $response->assertStatus(200);
+        $response->assertSee('id="dashboard-range"', false);
+        $response->assertSee('name="range"', false);
+        $response->assertSee('Este mes');
+        $response->assertSee('Últimos 3 meses');
+        $response->assertSee('Últimos 12 meses');
+    }
+
     public function test_dashboard_aligns_monthly_series_with_oldest_to_newest_labels(): void
     {
         $oldestMonth = now()->subMonths(11)->startOfMonth();
@@ -160,9 +184,82 @@ class DashboardTest extends TestCase
 
         $this->assertCount(12, $months);
         $this->assertCount(12, $salesData);
-        $this->assertSame($oldestMonth->format('M'), $months[0]);
-        $this->assertSame($currentMonth->format('M'), $months[11]);
+        $this->assertSame($oldestMonth->isoFormat('MMM'), $months[0]);
+        $this->assertSame($currentMonth->isoFormat('MMM'), $months[11]);
         $this->assertSame(111.0, (float) $salesData[0]);
         $this->assertSame(999.0, (float) $salesData[11]);
+    }
+
+    public function test_dashboard_defaults_to_twelve_month_range(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('dashboard'));
+
+        $response->assertStatus(200);
+        $this->assertSame('12m', $response->viewData('range'));
+        $this->assertSame('Últimos 12 meses', $response->viewData('rangeLabel'));
+        $this->assertCount(12, $response->viewData('months'));
+        $this->assertCount(12, $response->viewData('salesData'));
+        $this->assertCount(12, $response->viewData('purchasesData'));
+    }
+
+    public function test_dashboard_range_3m_returns_three_spanish_month_labels(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('dashboard') . '?range=3m');
+
+        $response->assertStatus(200);
+        $months = $response->viewData('months');
+
+        $this->assertSame('3m', $response->viewData('range'));
+        $this->assertSame('Últimos 3 meses', $response->viewData('rangeLabel'));
+        $this->assertCount(3, $months);
+        $this->assertCount(3, $response->viewData('salesData'));
+        $this->assertCount(3, $response->viewData('purchasesData'));
+        $this->assertSame(now()->subMonths(2)->isoFormat('MMM'), $months[0]);
+        $this->assertSame(now()->isoFormat('MMM'), $months[2]);
+    }
+
+    public function test_dashboard_range_1m_returns_single_spanish_month_label(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('dashboard') . '?range=1m');
+
+        $response->assertStatus(200);
+        $months = $response->viewData('months');
+
+        $this->assertSame('1m', $response->viewData('range'));
+        $this->assertSame('Este mes', $response->viewData('rangeLabel'));
+        $this->assertCount(1, $months);
+        $this->assertCount(1, $response->viewData('salesData'));
+        $this->assertCount(1, $response->viewData('purchasesData'));
+        $this->assertSame(now()->isoFormat('MMM'), $months[0]);
+    }
+
+    public function test_dashboard_invalid_range_falls_back_to_twelve_months(): void
+    {
+        $response = $this->actingAs($this->user)->get(route('dashboard') . '?range=bogus');
+
+        $response->assertStatus(200);
+        $this->assertSame('12m', $response->viewData('range'));
+        $this->assertCount(12, $response->viewData('months'));
+    }
+
+    public function test_dashboard_kpis_stay_scoped_to_current_month_regardless_of_range(): void
+    {
+        Sale::create([
+            'client_id' => $this->client->id,
+            'date' => now()->subMonths(6)->toDateString(),
+            'total' => 5000.00,
+        ]);
+        Sale::create([
+            'client_id' => $this->client->id,
+            'date' => now()->toDateString(),
+            'total' => 123.00,
+        ]);
+
+        $response = $this->actingAs($this->user)->get(route('dashboard') . '?range=12m');
+
+        $response->assertStatus(200);
+        // KPI block remains current month vs previous month (not range-scoped).
+        $this->assertSame(123.0, (float) $response->viewData('salesThisMonth'));
+        $this->assertSame(0.0, (float) $response->viewData('salesPreviousMonth'));
     }
 }
