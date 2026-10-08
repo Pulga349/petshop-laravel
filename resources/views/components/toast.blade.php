@@ -1,69 +1,47 @@
 @props(['type' => 'info', 'title' => null, 'dismissible' => true])
 
 @php
-    $colors = [
-        'success' => 'bg-emerald-500 border-emerald-600',
-        'error'   => 'bg-red-500 border-red-600', 
-        'warning' => 'bg-yellow-500 border-yellow-600',
-        'info'    => 'bg-blue-500 border-blue-600',
-    ];
-    
+    // Flat monochrome panel; chromatic color only on the icon micro-indicator.
     $icons = [
-        'success' => 'bi-check-circle',
-        'error'   => 'bi-x-circle',
-        'warning' => 'bi-exclamation-triangle',
-        'info'    => 'bi-info-circle',
+        'success' => 'bi-check-lg',
+        'error'   => 'bi-x-lg',
+        'warning' => 'bi-exclamation-triangle-fill',
+        'info'    => 'bi-info-lg',
     ];
-    
-    $bgColors = [
-        'success' => 'bg-emerald-500/10 border-emerald-500/30',
-        'error'   => 'bg-red-500/10 border-red-500/30',
-        'warning' => 'bg-yellow-500/10 border-yellow-500/30', 
-        'info'    => 'bg-blue-500/10 border-blue-500/30',
-    ];
-    
-    $textColors = [
-        'success' => 'text-emerald-400',
-        'error'   => 'text-red-400',
-        'warning' => 'text-yellow-400',
-        'info'    => 'text-blue-400',
-    ];
-    
+
     $iconColors = [
-        'success' => 'text-emerald-500',
-        'error'   => 'text-red-500',
-        'warning' => 'text-yellow-500',
-        'info'    => 'text-blue-500',
+        'success' => 'text-success',
+        'error'   => 'text-danger',
+        'warning' => 'text-warning',
+        'info'    => 'text-accent',
     ];
 @endphp
 
-<div x-data="toastItem('{{ $type }}', {{ $dismissible ? 'true' : 'false' }})"
+<div x-data="{ visible: true }"
      x-show="visible"
-     x-transition:leave="transition ease-in duration-300"
+     x-transition:leave="transition ease-in duration-200"
      x-transition:leave-start="opacity-100 translate-x-0"
-     x-transition:leave-end="opacity-100 translate-x-full"
-     class="relative flex items-start gap-3 p-4 mb-3 rounded-lg border shadow-lg backdrop-blur-sm {{ $bgColors[$type] }} {{ $colors[$type] }}/20 border-l-4"
+     x-transition:leave-end="opacity-0 translate-x-4"
+     class="flex w-full items-start gap-3 border border-line-focus bg-surface-raised p-4"
      role="alert">
-    
-    <!-- Icono -->
-    <i class="bi {{ $icons[$type] }} text-xl {{ $iconColors[$type] }}"></i>
-    
-    <!-- Content -->
-    <div class="flex-1 min-w-0">
-        @if($title)
-            <h4 class="font-semibold text-gray-100 mb-1">{{ $title }}</h4>
+
+    <span class="flex h-8 w-8 shrink-0 items-center justify-center border border-line-focus {{ $iconColors[$type] }}">
+        <i class="bi {{ $icons[$type] }} text-base" aria-hidden="true"></i>
+    </span>
+
+    <div class="min-w-0 flex-1">
+        <p class="text-sm font-semibold text-white">{{ $title ?: $slot }}</p>
+        @if($title && trim((string) $slot) !== '')
+            <p class="mt-0.5 text-xs text-neutral-400">{{ $slot }}</p>
         @endif
-        <div class="text-sm text-gray-300">
-            {{ $slot }}
-        </div>
     </div>
-    
-    <!-- Close button -->
+
     @if($dismissible)
-        <button @click="dismiss()" 
-                class="p-1 text-gray-400 hover:text-white transition rounded hover:bg-white/10"
+        <button type="button"
+                @click="visible = false"
+                class="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center text-neutral-400 transition hover:bg-surface-hover hover:text-white"
                 aria-label="Cerrar">
-            <i class="bi bi-x-lg"></i>
+            <i class="bi bi-x-lg text-sm" aria-hidden="true"></i>
         </button>
     @endif
 </div>

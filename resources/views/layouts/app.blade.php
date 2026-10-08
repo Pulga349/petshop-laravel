@@ -10,7 +10,7 @@
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
         <!-- Bootstrap Icons -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
@@ -22,7 +22,7 @@
         $navStyle = session('nav_style', config('ui.nav_style', 'dock'));
         $hideNav = request()->routeIs('*.create') || request()->routeIs('*.edit');
     @endphp
-    <body class="bg-[#0f1117] text-[#f5f6fa] antialiased min-h-screen font-['Inter'] {{ $navStyle === 'dock' && !$hideNav ? 'pb-24' : '' }} {{ $hideNav ? 'overflow-hidden' : 'overflow-x-hidden' }}">
+    <body class="min-h-screen overflow-x-hidden font-sans antialiased {{ $navStyle === 'dock' && !$hideNav ? 'pb-24' : '' }}">
         <div class="flex min-h-screen">
             @if($navStyle === 'sidebar' && !$hideNav)
                 <!-- Sidebar -->
@@ -30,15 +30,19 @@
             @endif
 
             <!-- Main Layout -->
-            <div id="main-layout" class="flex-1 flex flex-col transition-all duration-300 ease-in-out {{ $navStyle === 'sidebar' && !$hideNav ? 'ml-[220px]' : '' }}">
+            <div id="main-layout" class="flex min-w-0 flex-1 flex-col transition-all duration-300 ease-in-out {{ $navStyle === 'sidebar' && !$hideNav ? 'md:ml-64' : '' }}">
                 <!-- Topbar -->
                 <x-topbar />
 
                 <!-- Main Content -->
-                <main class="flex-1 p-8">
+                <main class="flex-1 p-[var(--space-page)]">
                     <!-- Toast Container -->
                     <x-toast-container />
                     <x-flash-messages />
+
+                    @hasSection('header')
+                        <div class="mb-8">@yield('header')</div>
+                    @endif
 
                     @yield('content')
                 </main>

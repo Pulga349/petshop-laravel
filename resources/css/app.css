@@ -1,3 +1,198 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    :root {
+        color-scheme: dark;
+
+        /* Vantablack Monochrome — color tokens */
+        --color-canvas: #000000;
+        --color-surface: #0d0d0d;
+        --color-surface-raised: #161616;
+        --color-surface-muted: #0d0d0d;
+        --color-surface-hover: #222222;
+        --color-line: #262626;
+        --color-line-focus: #525252;
+        --color-accent: #8d8d8d;
+        --color-copy: #ffffff;
+        --color-copy-muted: #a3a3a3;
+        --color-copy-subtle: #737373;
+        --color-primary: #8d8d8d;
+        --color-success: #10b981;
+        --color-warning: #f59e0b;
+        --color-danger: #ef4444;
+        --color-success-container: rgba(16, 185, 129, 0.1);
+        --color-warning-container: rgba(245, 158, 11, 0.1);
+        --color-danger-container: rgba(239, 68, 68, 0.1);
+
+        --space-page: clamp(1rem, 2.5vw, 2.5rem);
+
+        /* Neutral focus ring — high contrast, no blue, no blur */
+        --focus-ring: 0 0 0 2px var(--color-accent);
+    }
+
+    /* No border radius anywhere, including user-agent and plugin control styles */
+    *,
+    ::before,
+    ::after {
+        border-radius: 0;
+    }
+
+    /* Element-level reset so @tailwindcss/forms rules (e.g. radio buttons) stay square */
+    input,
+    select,
+    textarea,
+    button {
+        border-radius: 0;
+    }
+
+    html {
+        background: var(--color-canvas);
+    }
+
+    body {
+        background: var(--color-canvas);
+        color: var(--color-copy);
+        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    }
+
+    :focus-visible {
+        outline: none;
+        box-shadow: var(--focus-ring);
+    }
+}
+
+@layer components {
+    .surface {
+        background: var(--color-surface);
+        border: 1px solid var(--color-line);
+    }
+
+    .surface-muted {
+        background: var(--color-surface-muted);
+        border: 1px solid var(--color-line);
+    }
+
+    .page-heading {
+        @apply flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between;
+    }
+
+    .page-heading h1,
+    .page-heading h2 {
+        @apply text-2xl font-bold tracking-tight text-white sm:text-3xl;
+    }
+
+    .page-heading p {
+        @apply mt-1 text-sm text-neutral-400;
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger,
+    .icon-button {
+        @apply inline-flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-semibold transition-colors;
+    }
+
+    .btn-primary {
+        @apply bg-white text-black hover:bg-neutral-200;
+    }
+
+    .btn-secondary {
+        @apply border border-line bg-surface-raised text-white hover:bg-surface-hover;
+    }
+
+    .btn-danger {
+        @apply border border-danger bg-danger/10 text-white hover:border-accent;
+    }
+
+    .icon-button {
+        @apply w-11 px-0 text-neutral-400 hover:bg-surface-hover hover:text-white;
+    }
+
+    .field-label {
+        @apply mb-1.5 block text-sm font-medium text-white;
+    }
+
+    .field-label .required {
+        @apply ml-1 text-danger;
+    }
+
+    .field-control {
+        @apply min-h-11 w-full border border-line bg-surface-raised px-3 text-sm text-white placeholder:text-neutral-400 focus:border-line-focus focus:outline-none;
+    }
+
+    .field-error {
+        @apply mt-1 text-xs font-medium text-danger;
+    }
+
+    .table-shell {
+        @apply overflow-hidden;
+        background: var(--color-surface);
+        border: 1px solid var(--color-line);
+    }
+
+    .table-shell table {
+        @apply min-w-full divide-y divide-line;
+    }
+
+    .table-shell thead {
+        background: var(--color-surface-raised);
+    }
+
+    .table-shell th {
+        @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-400;
+    }
+
+    .table-shell td {
+        @apply px-4 py-4 text-sm text-white;
+    }
+
+    .table-shell tbody tr {
+        @apply border-t border-line;
+    }
+
+    .table-shell tbody tr:hover {
+        background: var(--color-surface-hover);
+    }
+
+    .status-badge {
+        @apply inline-flex items-center px-2.5 py-1 font-mono text-xs font-semibold;
+    }
+
+    .form-panel {
+        @apply w-full max-w-5xl overflow-hidden;
+        background: var(--color-surface);
+        border: 1px solid var(--color-line);
+    }
+
+    .form-section {
+        @apply border-t border-line p-5 first:border-t-0 sm:p-6;
+    }
+
+    .form-section h3 {
+        @apply text-base font-semibold text-white;
+    }
+
+    .form-section > p {
+        @apply mt-1 text-sm text-neutral-400;
+    }
+
+    .form-actions {
+        @apply sticky bottom-0 flex flex-col-reverse gap-3 border-t border-line bg-surface-raised p-4 sm:flex-row sm:justify-end;
+    }
+
+    .sr-only-focusable:not(:focus):not(:focus-within) {
+        @apply sr-only;
+    }
+}
+
+@media (max-width: 767px) {
+    .table-shell {
+        overflow-x: auto;
+    }
+
+    .table-shell table {
+        min-width: 720px;
+    }
+}

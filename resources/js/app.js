@@ -48,23 +48,27 @@ window.toastContainer = () => ({
             }, 300);
         }
     },
-    getClasses(type) {
-        const classes = {
-            success: 'bg-emerald-500/10 border-emerald-500/30 border-l-emerald-500',
-            error: 'bg-red-500/10 border-red-500/30 border-l-red-500',
-            warning: 'bg-yellow-500/10 border-yellow-500/30 border-l-yellow-500',
-            info: 'bg-blue-500/10 border-blue-500/30 border-l-blue-500',
-        };
-        return classes[type] || classes.info;
+    getClasses() {
+        // Flat monochrome panel per design contract; chromatic color only on the icon micro-indicator.
+        return 'border border-line-focus bg-surface-raised';
     },
     getIcon(type) {
-        const icons = {
-            success: 'bi-check-circle-fill text-emerald-500',
-            error: 'bi-x-circle-fill text-red-500',
-            warning: 'bi-exclamation-triangle-fill text-yellow-500',
-            info: 'bi-info-circle-fill text-blue-500',
+        const colors = {
+            success: 'text-success',
+            error: 'text-danger',
+            warning: 'text-warning',
+            info: 'text-accent',
         };
-        return icons[type] || icons.info;
+        return colors[type] || colors.info;
+    },
+    getGlyph(type) {
+        const glyphs = {
+            success: 'bi-check-lg',
+            error: 'bi-x-lg',
+            warning: 'bi-exclamation-triangle-fill',
+            info: 'bi-info-lg',
+        };
+        return glyphs[type] || glyphs.info;
     },
     show(type, message, title = '', duration = 5000) {
         this.add({ type, message, title, duration });
@@ -79,117 +83,168 @@ window.showToast = (type, message, title = '', duration = 5000) => {
 };
 
 // Sales Chart Component -lee los datos desde el DOM
-window.salesChart = () => ({
-    chart: null,
-    init() {
-        const ctx = this.$refs.salesChart.getContext('2d');
-        
-        // Get data from DOM attributes
-        const labels = JSON.parse(this.$refs.salesChart.dataset.labels || '[]');
-        const salesData = JSON.parse(this.$refs.salesChart.dataset.sales || '[]');
-        const purchasesData = JSON.parse(this.$refs.salesChart.dataset.purchases || '[]');
-        
-        // Create gradients
-        const salesGradient = ctx.createLinearGradient(0, 0, 0, 300);
-        salesGradient.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
-        salesGradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
-        
-        const purchasesGradient = ctx.createLinearGradient(0, 0, 0, 300);
-        purchasesGradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
-        purchasesGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
-        
-        this.chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Ventas',
-                        data: salesData,
-                        borderColor: '#10b981',
-                        backgroundColor: salesGradient,
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        pointHoverBackgroundColor: '#10b981',
-                        pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 2,
-                    },
-                    {
-                        label: 'Compras',
-                        data: purchasesData,
-                        borderColor: '#3b82f6',
-                        backgroundColor: purchasesGradient,
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        pointHoverBackgroundColor: '#3b82f6',
-                        pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 2,
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(30, 30, 30, 0.9)',
-                        titleColor: '#f5f6fa',
-                        bodyColor: '#9ca3af',
-                        borderColor: 'rgba(255, 255, 255, 0.1)',
-                        borderWidth: 1,
-                        padding: 12,
-                        displayColors: true,
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
-                            }
+// Chart state lives in the factory CLOSURE, never on the Alpine data object:
+// Alpine wraps component data in a deep reactive proxy, and Chart.js instances
+// (or their gradients/options) break through it — update() then explodes with
+// "Maximum call stack" / corrupted internals. Closures are not reactive.
+window.salesChart = () => {
+    let chart = null;
+    let range = '12m';
+    let requestId = 0;
+    let chartUrl = '';
+
+    return {
+        init() {
+            const ctx = this.$refs.salesChart.getContext('2d');
+
+            // Get data from DOM attributes
+            const labels = JSON.parse(this.$refs.salesChart.dataset.labels || '[]');
+            const salesData = JSON.parse(this.$refs.salesChart.dataset.sales || '[]');
+            const purchasesData = JSON.parse(this.$refs.salesChart.dataset.purchases || '[]');
+            range = this.$refs.salesChart.dataset.range || '12m';
+            // Capture the endpoint in init's root-component context: `this.$el`
+            // inside event handlers resolves to the event target (the select),
+            // not the x-data section, so reading dataset.url there yields undefined.
+            chartUrl = this.$refs.salesChart.dataset.url || '';
+
+            // Monochrome gradients — chromatic colors are reserved for micro-indicators
+            const salesGradient = ctx.createLinearGradient(0, 0, 0, 300);
+            salesGradient.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
+            salesGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+            const purchasesGradient = ctx.createLinearGradient(0, 0, 0, 300);
+            purchasesGradient.addColorStop(0, 'rgba(141, 141, 141, 0.18)');
+            purchasesGradient.addColorStop(1, 'rgba(141, 141, 141, 0)');
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Ventas',
+                            data: salesData,
+                            borderColor: '#ffffff',
+                            backgroundColor: salesGradient,
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            pointHoverBackgroundColor: '#ffffff',
+                            pointHoverBorderColor: '#000000',
+                            pointHoverBorderWidth: 2,
+                        },
+                        {
+                            label: 'Compras',
+                            data: purchasesData,
+                            borderColor: '#8d8d8d',
+                            backgroundColor: purchasesGradient,
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            pointHoverBackgroundColor: '#8d8d8d',
+                            pointHoverBorderColor: '#000000',
+                            pointHoverBorderWidth: 2,
                         }
-                    }
+                    ]
                 },
-                scales: {
-                    x: {
-                        grid: {
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
                             display: false
                         },
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            font: {
-                                family: 'Inter'
+                        tooltip: {
+                            backgroundColor: '#161616',
+                            titleColor: '#ffffff',
+                            bodyColor: '#a3a3a3',
+                            borderColor: '#262626',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
+                                }
                             }
                         }
                     },
-                    y: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.05)'
-                        },
-                        ticks: {
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            font: {
-                                family: 'Inter'
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
                             },
-                            callback: function(value) {
-                                return '$' + value.toLocaleString();
+                            ticks: {
+                                color: '#a3a3a3',
+                                font: {
+                                    family: 'JetBrains Mono'
+                                }
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: '#262626'
+                            },
+                            ticks: {
+                                color: '#a3a3a3',
+                                font: {
+                                    family: 'JetBrains Mono'
+                                },
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
                             }
                         }
                     }
                 }
+            });
+        },
+        async setRange(nextRange) {
+            if (nextRange === range) return;
+
+            const currentRequestId = ++requestId;
+
+            try {
+                if (!chartUrl) throw new Error('chart data URL missing');
+                const response = await fetch(chartUrl + '?range=' + encodeURIComponent(nextRange), {
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const payload = await response.json();
+                // Ignore stale responses: a newer request superseded this one.
+                if (currentRequestId !== requestId) return;
+
+                chart.data.labels = payload.labels;
+                chart.data.datasets[0].data = payload.sales;
+                chart.data.datasets[1].data = payload.purchases;
+                chart.update();
+
+                this.$refs.rangeLabel.textContent = payload.rangeLabel;
+                this.$refs.salesChart.setAttribute('aria-label', 'Gráfico de ventas y compras: ' + payload.rangeLabel);
+                range = payload.range;
+
+                // Preserve other query params in the URL without reloading.
+                const url = new URL(window.location.href);
+                url.searchParams.set('range', payload.range);
+                history.replaceState({}, '', url.toString());
+            } catch (error) {
+                if (currentRequestId !== requestId) return;
+                console.warn('Failed to update chart range:', error);
+                // Revert the select to the range the chart still shows.
+                if (this.$refs.rangeSelect) this.$refs.rangeSelect.value = range;
             }
-        });
-    }
-});
+        }
+    };
+};
 
 // Global Navigation Shortcuts
 document.addEventListener('keydown', (e) => {
