@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Product;
 class Sale extends Model {
     use HasFactory;
-    protected $fillable = ['date', 'client_id', 'total'];
+    protected $fillable = ['date', 'client_id', 'total', 'payment_method', 'amount_paid', 'discount_amount', 'iva_amount'];
     public function client(): BelongsTo { return $this->belongsTo(Client::class); }
     public function details(): HasMany { return $this->hasMany(SaleDetail::class); }
 
