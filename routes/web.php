@@ -5,8 +5,10 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\PosController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SettingController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -17,12 +19,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard principal
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Punto de venta (terminal POS, separada de la lista de ventas)
+    Route::get('/pos', [PosController::class, 'create'])->name('pos');
+
     // CRUDs de Recursos
     Route::resource('products', ProductController::class);
     Route::resource('suppliers', SupplierController::class);
     Route::resource('clients', ClientController::class);
     Route::resource('purchases', PurchaseController::class);
     Route::resource('sales', SaleController::class);
+
+    // Configuración de la aplicación (IVA y descuentos por tier)
+    Route::get('/settings', [SettingController::class, 'show'])->name('settings.show');
+    Route::put('/settings', [SettingController::class, 'update'])->name('settings.update');
 
     // Perfil de usuario (Breeze)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
