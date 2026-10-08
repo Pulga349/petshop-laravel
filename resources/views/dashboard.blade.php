@@ -1,223 +1,101 @@
 @extends('layouts.app')
 
 @section('content')
-    <!-- Fila 1: KPIs (Glassmorphism) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <!-- Inversión Total -->
-        <div class="relative group">
-            <div class="absolute inset-0 bg-blue-500/10 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div class="relative bg-[#1a1c23]/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-6 shadow-2xl overflow-hidden">
-                <div class="absolute top-0 right-0 p-4 opacity-5">
-                    <i class="bi bi-wallet2 text-7xl text-blue-400"></i>
-                </div>
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="p-3 bg-blue-500/10 rounded-2xl">
-                        <i class="bi bi-wallet2 text-blue-500 text-xl"></i>
+@php
+    $userName = Auth::user()->name ?? 'Usuario';
+    $salesVariation = $kpiComparisons['sales'] ?? 0;
+    $purchasesVariation = $kpiComparisons['purchases'] ?? 0;
+    $profitVariation = $kpiComparisons['profit'] ?? 0;
+    $trend = static function (float|int $variation): string {
+        return $variation > 0 ? 'up' : ($variation < 0 ? 'down' : 'flat');
+    };
+@endphp
+
+<div class="space-y-8">
+    <section class="page-heading" aria-labelledby="dashboard-heading">
+        <div>
+            <p class="mb-1 text-sm font-medium text-neutral-400">{{ now()->isoFormat('dddd, D [de] MMMM') }}</p>
+            <h1 id="dashboard-heading">Buenos días, {{ $userName }}</h1>
+            <p>Una vista clara de las operaciones de tu tienda.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="kpi-heading">
+        <div class="mb-3 flex items-center justify-between">
+            <div>
+                <h2 id="kpi-heading" class="text-lg font-semibold text-white">Resumen del periodo</h2>
+                <p class="text-sm text-neutral-400">Comparado con el mes anterior</p>
+            </div>
+            <span class="hidden text-xs text-neutral-400 sm:inline">{{ now()->translatedFormat('F Y') }}</span>
+        </div>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            @foreach([
+                ['label' => 'Ventas del mes', 'value' => '$'.number_format($salesThisMonth, 2), 'variation' => $salesVariation, 'key' => 'sales', 'icon' => 'bi-cash-stack', 'data' => $salesData],
+                ['label' => 'Compras del mes', 'value' => '$'.number_format($purchasesThisMonth, 2), 'variation' => $purchasesVariation, 'key' => 'purchases', 'icon' => 'bi-cart-check', 'data' => $purchasesData],
+                ['label' => 'Utilidad del mes', 'value' => '$'.number_format($profitThisMonth, 2), 'variation' => $profitVariation, 'key' => 'profit', 'icon' => 'bi-graph-up-arrow', 'data' => $salesData],
+            ] as $kpi)
+                <article class="surface p-5">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-neutral-400">{{ $kpi['label'] }}</p>
+                            <p class="mt-2 font-mono text-2xl font-bold text-white">{{ $kpi['value'] }}</p>
+                        </div>
+                        <span class="flex h-10 w-10 items-center justify-center border border-line bg-surface-raised text-neutral-300"><i class="bi {{ $kpi['icon'] }}" aria-hidden="true"></i></span>
                     </div>
-                    <span class="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Inversión Total</span>
-                </div>
-                <h3 class="text-3xl font-black text-white tracking-tight">${{ number_format($totalSpent, 2) }}</h3>
-                <div class="mt-2">
-                    <span class="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Inversión acumulada</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Ventas Totales -->
-        <div class="relative group">
-            <div class="absolute inset-0 bg-blue-500/10 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div class="relative bg-[#1a1c23]/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-6 shadow-2xl overflow-hidden">
-                <div class="absolute top-0 right-0 p-4 opacity-5">
-                    <i class="bi bi-cart3 text-7xl text-gray-400"></i>
-                </div>
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="p-3 bg-white/5 rounded-2xl">
-                        <i class="bi bi-cart3 text-gray-400 text-xl"></i>
+                    <div class="mt-4 flex items-center justify-between gap-3">
+                        <span class="status-badge {{ $kpi['variation'] >= 0 ? 'border border-success/30 bg-success/10 text-white' : 'border border-danger/30 bg-danger/10 text-white' }}">
+                            <i class="bi bi-arrow-{{ $kpi['variation'] >= 0 ? 'up' : 'down' }}-short {{ $kpi['variation'] >= 0 ? 'text-success' : 'text-danger' }}" aria-hidden="true"></i>{{ abs($kpi['variation']) }}%
+                        </span>
+                        <span class="text-xs text-neutral-400">vs. mes anterior</span>
+                        <span class="flex items-end gap-0.5" aria-label="Tendencia {{ $trend($kpi['variation']) }}">
+                            @foreach(array_slice($kpi['data'], -6) as $point)
+                                <span class="w-1.5 bg-neutral-400" style="height: {{ max(4, min(22, ((float) $point / max((float) max($kpi['data']), 1)) * 22)) }}px"></span>
+                            @endforeach
+                        </span>
                     </div>
-                    <span class="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Ventas Totales</span>
+                </article>
+            @endforeach
+
+            <article class="surface p-5">
+                <div class="flex items-start justify-between gap-3">
+                    <div><p class="text-xs font-semibold uppercase tracking-wider text-neutral-400">Stock bajo</p><p class="mt-2 text-2xl font-bold text-white"><span class="font-mono">{{ $lowStockProducts }}</span> ítems</p></div>
+                    <span class="flex h-10 w-10 items-center justify-center border border-warning/30 bg-warning/10 text-warning"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span>
                 </div>
-                <h3 class="text-3xl font-black text-white tracking-tight">${{ number_format($totalSold, 2) }}</h3>
-                <div class="mt-2">
-                    <span class="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Ingresos generados</span>
-                </div>
+                <p class="mt-4 text-xs text-neutral-400">{{ $totalProducts }} productos · {{ $totalClients }} clientes activos</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="surface p-5 sm:p-6" x-data="salesChart()" aria-labelledby="trend-heading">
+        <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
+            <div><h2 id="trend-heading" class="text-lg font-semibold text-white">Tendencia de ventas y compras</h2><p x-ref="rangeLabel" class="text-sm text-neutral-400">{{ $rangeLabel }}</p></div>
+            <div class="flex items-center gap-3">
+                <label for="dashboard-range" class="sr-only">Rango del gráfico</label>
+                <select id="dashboard-range" x-ref="rangeSelect" name="range" class="field-control w-auto min-w-40" aria-label="Rango del gráfico" @change="setRange($event.target.value)">
+                    @foreach(['1m' => 'Este mes', '3m' => 'Últimos 3 meses', '12m' => 'Últimos 12 meses'] as $rangeValue => $rangeText)
+                        <option value="{{ $rangeValue }}" @selected($range === $rangeValue)>{{ $rangeText }}</option>
+                    @endforeach
+                </select>
+                <span class="status-badge border border-line bg-surface-raised text-white">Resumen</span>
             </div>
         </div>
+        <div class="h-72"><canvas id="monthlyTrendChart" x-ref="salesChart" data-labels='@json($months)' data-sales='@json($salesData)' data-purchases='@json($purchasesData)' data-range="{{ $range }}" data-url="{{ url()->route('dashboard.chart-data', [], false) }}" aria-label="Gráfico de ventas y compras: {{ $rangeLabel }}"></canvas></div>
+    </section>
 
-        <!-- Utilidad Neta -->
-        <div class="relative group">
-            <div class="absolute inset-0 bg-emerald-500/10 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div class="relative bg-[#1a1c23]/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-6 shadow-2xl overflow-hidden">
-                <div class="absolute top-0 right-0 p-4 opacity-5">
-                    <i class="bi bi-graph-up-arrow text-7xl text-emerald-400"></i>
-                </div>
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="p-3 bg-emerald-500/10 rounded-2xl">
-                        <i class="bi bi-graph-up-arrow text-emerald-500 text-xl"></i>
-                    </div>
-                    <span class="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Utilidad Neta</span>
-                </div>
-                <h3 class="text-3xl font-black {{ $totalProfit >= 0 ? 'text-emerald-400' : 'text-red-400' }} tracking-tight">
-                    ${{ number_format($totalProfit, 2) }}
-                </h3>
-                <div class="mt-2">
-                    <span class="text-[10px] font-bold text-gray-600 uppercase tracking-widest">Margen de ganancia</span>
-                </div>
+    <section class="grid grid-cols-1 gap-4 xl:grid-cols-2" aria-label="Transacciones recientes">
+        @foreach([['title' => 'Ventas recientes', 'subtitle' => 'Últimas transacciones realizadas', 'route' => 'sales.index', 'items' => $recentSales, 'person' => 'client', 'fallback' => 'Consumidor Final', 'amount' => 'total', 'empty' => 'No hay ventas registradas recientemente.'], ['title' => 'Compras recientes', 'subtitle' => 'Últimos abastecimientos de stock', 'route' => 'purchases.index', 'items' => $recentPurchases, 'person' => 'supplier', 'fallback' => 'Proveedor', 'amount' => null, 'empty' => 'No hay compras registradas recientemente.']] as $table)
+            <div class="table-shell">
+                <div class="flex items-center justify-between gap-3 p-5"><div><h2 class="text-base font-semibold text-white">{{ $table['title'] }}</h2><p class="text-xs text-neutral-400">{{ $table['subtitle'] }}</p></div><a href="{{ route($table['route']) }}" class="text-xs font-semibold text-accent underline hover:text-white">Ver todo</a></div>
+                <div class="overflow-x-auto"><table><thead><tr><th>Persona</th><th>Ítems</th><th class="text-right">Monto</th></tr></thead><tbody>
+                    @forelse($table['items'] as $item)
+                        @php $person = optional($item->{$table['person']})->name ?? $table['fallback']; $amount = $table['amount'] ? $item->{$table['amount']} : $item->details->sum('subtotal'); @endphp
+                        <tr><td><span class="font-medium">{{ $person }}</span></td><td class="font-mono text-neutral-400">{{ $item->details->count() }}</td><td class="text-right font-mono font-semibold text-white">${{ number_format($amount, 2) }}</td></tr>
+                    @empty
+                        <tr><td colspan="3" class="py-10 text-center text-sm text-neutral-400">{{ $table['empty'] }}</td></tr>
+                    @endforelse
+                </tbody></table></div>
             </div>
-        </div>
-
-        <!-- Stock Bajo -->
-        <div class="relative group">
-            <div class="absolute inset-0 bg-red-500/10 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div class="relative bg-[#1a1c23]/60 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-6 shadow-2xl overflow-hidden">
-                <div class="absolute top-0 right-0 p-4 opacity-5">
-                    <i class="bi bi-exclamation-triangle text-7xl text-red-400"></i>
-                </div>
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="p-3 bg-red-500/10 rounded-2xl">
-                        <i class="bi bi-exclamation-triangle text-red-500 text-xl"></i>
-                    </div>
-                    <span class="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Stock Bajo</span>
-                </div>
-                <h3 class="text-3xl font-black text-white tracking-tight">{{ $lowStockProducts }} ítems</h3>
-                <div class="mt-2">
-                    <span class="text-[10px] font-bold text-red-500/60 uppercase tracking-widest italic">Atención inmediata</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Fila 2: Gráfico de tendencias -->
-    <div class="mb-8">
-        <div x-data="salesChart()" class="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-xl h-[400px] flex flex-col">
-            <div class="flex items-center justify-between mb-6">
-                <div>
-                    <h3 class="text-lg font-semibold text-white tracking-tight">Tendencia de ventas y compras</h3>
-                    <p class="text-xs text-gray-500 uppercase tracking-wider">Últimos 12 meses</p>
-                </div>
-                <div class="p-2 bg-emerald-500/10 rounded-lg">
-                    <i class="bi bi-activity text-emerald-400"></i>
-                </div>
-            </div>
-            <div class="flex-1 min-h-0 relative">
-                <canvas id="monthlyTrendChart"
-                        x-ref="salesChart"
-                        data-labels='@json($months)'
-                        data-sales='@json($salesData)'
-                        data-purchases='@json($purchasesData)'></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Fila 3: Tablas Recientes -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Recent Sales Table -->
-        <div class="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-            <div class="p-6 border-b border-white/5 flex items-center justify-between">
-                <div>
-                    <h3 class="text-lg font-semibold text-white tracking-tight">Ventas Recientes</h3>
-                    <p class="text-xs text-gray-500 uppercase tracking-wider">Últimas transacciones realizadas</p>
-                </div>
-                <a href="{{ route('sales.index') }}" class="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest">Ver Todo</a>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-white/5">
-                            <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Cliente</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Ítems</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Monto</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-white/5">
-                        @forelse($recentSales as $sale)
-                            <tr class="hover:bg-white/5 transition-colors group">
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-xs font-bold text-emerald-400 border border-emerald-500/20">
-                                            {{ substr($sale->client->name ?? 'S', 0, 1) }}
-                                        </div>
-                                        <span class="text-sm font-medium text-gray-200">{{ $sale->client->name ?? 'Consumidor Final' }}</span>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <span class="text-xs font-medium text-gray-400">{{ $sale->details->count() }} prod.</span>
-                                </td>
-                                <td class="px-6 py-4 text-right">
-                                    <span class="text-sm font-bold text-emerald-400">${{ number_format($sale->total, 2) }}</span>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <span class="px-3 py-1 bg-blue-500/10 text-blue-400 text-[10px] font-bold uppercase tracking-widest rounded-full border border-blue-500/20">
-                                        Completada
-                                    </span>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="px-6 py-12 text-center text-gray-500 text-sm italic">
-                                    No hay ventas registradas recientemente.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Recent Purchases Table -->
-        <div class="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-            <div class="p-6 border-b border-white/5 flex items-center justify-between">
-                <div>
-                    <h3 class="text-lg font-semibold text-white tracking-tight">Compras Recientes</h3>
-                    <p class="text-xs text-gray-500 uppercase tracking-wider">Últimos abastecimientos de stock</p>
-                </div>
-                <a href="{{ route('purchases.index') }}" class="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-widest">Ver Todo</a>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-white/5">
-                            <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Proveedor</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Ítems</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Costo</th>
-                            <th class="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-white/5">
-                        @forelse($recentPurchases as $purchase)
-                            <?php $purchaseTotal = $purchase->details->sum('subtotal'); ?>
-                            <tr class="hover:bg-white/5 transition-colors group">
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-xs font-bold text-blue-400 border border-blue-500/20">
-                                            {{ substr($purchase->supplier->name ?? 'P', 0, 1) }}
-                                        </div>
-                                        <span class="text-sm font-medium text-gray-200">{{ $purchase->supplier->name ?? 'Proveedor' }}</span>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <span class="text-xs font-medium text-gray-400">{{ $purchase->details->count() }} prod.</span>
-                                </td>
-                                <td class="px-6 py-4 text-right">
-                                    <span class="text-sm font-bold text-gray-300">${{ number_format($purchaseTotal, 2) }}</span>
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    <span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold uppercase tracking-widest rounded-full border border-emerald-500/20">
-                                        Recibida
-                                    </span>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="4" class="px-6 py-12 text-center text-gray-500 text-sm italic">
-                                    No hay compras registradas recientemente.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
+        @endforeach
+    </section>
+</div>
 @endsection

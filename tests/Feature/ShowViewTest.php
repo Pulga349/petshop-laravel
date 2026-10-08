@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Client;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseDetail;
@@ -38,6 +39,8 @@ class ShowViewTest extends TestCase
             'category' => 'Alimento',
         ]);
 
+        $category = Category::create(['name' => 'Alimento']);
+
         $this->product = Product::create([
             'name' => 'Show Product',
             'sku' => 'SHOW001',
@@ -45,7 +48,8 @@ class ShowViewTest extends TestCase
             'purchase_price' => 50.00,
             'initial_stock' => 10,
             'supplier_id' => $this->supplier->id,
-            'category' => 'Nutrition',
+            'category_id' => $category->id,
+            'category_type' => Category::class,
         ]);
 
         $this->client = Client::create([
